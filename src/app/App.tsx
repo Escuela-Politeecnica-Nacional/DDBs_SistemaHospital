@@ -226,6 +226,10 @@ export default function App() {
    */
   const handleEditPaciente = async (id: string, paciente: Omit<Paciente, "id">) => {
     try {
+      if (!id) {
+        console.error('handleEditPaciente: id vacío, no se ejecutará la petición PUT');
+        return;
+      }
       const sede = selectedCenter.toLowerCase();
       await fetch(`http://localhost:4000/api/pacientes/${id}?sede=${sede}`,
         {

@@ -109,7 +109,12 @@ export function PacientesManager({
   const handleSubmit = () => {
     const pacienteData = { ...formData };
     if (editingPaciente) {
-      onEditPaciente(editingPaciente.id, pacienteData);
+      const idToUse = (editingPaciente.id && editingPaciente.id.toString()) || (formData.id && formData.id.toString()) || "";
+      if (!idToUse) {
+        console.error('PacientesManager: id vacío al intentar actualizar paciente, operación cancelada');
+        return;
+      }
+      onEditPaciente(idToUse, pacienteData);
     } else {
       onAddPaciente(pacienteData);
     }
