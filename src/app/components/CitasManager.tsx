@@ -12,12 +12,9 @@ import { Plus, Edit, Trash2, Search, FileText } from "lucide-react";
 interface Cita {
   id: string;
   pacienteId: string;
-  doctorId: string;
   consultorioId: string;
   fecha: string;
-  hora: string;
   motivo: string;
-  estado: "Programada" | "Completada" | "Cancelada";
 }
 
 interface Paciente {
@@ -71,13 +68,12 @@ export function CitasManager({
   const [editingCita, setEditingCita] = useState<Cita | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
+    id: "",
     pacienteId: "",
-    doctorId: "",
     consultorioId: "",
     fecha: "",
-    hora: "",
     motivo: "",
-    estado: "Programada" as "Programada" | "Completada" | "Cancelada",
+    centroMedico: "",
   });
 
   // Filtrar datos por centro médico
@@ -93,25 +89,20 @@ export function CitasManager({
 
   const filteredCitas = citasCentro.filter((cita) => {
     const paciente = pacientes.find((p) => p.id === cita.pacienteId);
-    const doctor = doctores.find((d) => d.id === cita.doctorId);
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = (searchTerm || '').toLowerCase();
+    const nombre = (paciente?.nombre || '').toLowerCase();
+    const apellido = (paciente?.apellido || '').toLowerCase();
+    const motivo = (cita.motivo || '').toLowerCase();
     return (
-      paciente?.nombre.toLowerCase().includes(searchLower) ||
-      paciente?.apellido.toLowerCase().includes(searchLower) ||
-      doctor?.nombre.toLowerCase().includes(searchLower) ||
-      doctor?.apellido.toLowerCase().includes(searchLower) ||
-      cita.motivo.toLowerCase().includes(searchLower)
+      nombre.includes(searchLower) ||
+      apellido.includes(searchLower) ||
+      motivo.includes(searchLower)
     );
   });
 
   const getPacienteNombre = (id: string) => {
     const paciente = pacientes.find((p) => p.id === id);
     return paciente ? `${paciente.nombre} ${paciente.apellido}` : "N/A";
-  };
-
-  const getDoctorNombre = (id: string) => {
-    const doctor = doctores.find((d) => d.id === id);
-    return doctor ? `Dr. ${doctor.nombre} ${doctor.apellido}` : "N/A";
   };
 
   const getConsultorioNumero = (id: string) => {
@@ -121,25 +112,34 @@ export function CitasManager({
   const handleOpenDialog = (cita?: Cita) => {
     if (cita) {
       setEditingCita(cita);
+      // derive centroMedico numeric value from existing cita or selectedCenter
+      const existingCentro = (cita as any).centroMedico;
+      const toCentroValue = (val: any) => {
+        if (val === null || val === undefined) return selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0';
+        const s = String(val).toLowerCase();
+        if (s === 'centro') return '1';
+        if (s === 'sur') return '2';
+        if (s === 'norte') return '0';
+        if (!isNaN(Number(s))) return String(Number(s));
+        return selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0';
+      };
       setFormData({
+        id: cita.id,
         pacienteId: cita.pacienteId,
-        doctorId: cita.doctorId,
         consultorioId: cita.consultorioId,
         fecha: cita.fecha,
-        hora: cita.hora,
         motivo: cita.motivo,
-        estado: cita.estado,
+        centroMedico: toCentroValue(existingCentro),
       });
     } else {
       setEditingCita(null);
       setFormData({
+        id: "",
         pacienteId: "",
-        doctorId: "",
         consultorioId: "",
         fecha: "",
-        hora: "",
         motivo: "",
-        estado: "Programada",
+        centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
       });
     }
     setIsDialogOpen(true);
@@ -219,37 +219,35 @@ export function CitasManager({
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Hora</TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead>id_paciente</TableHead>
                   <TableHead>Paciente</TableHead>
-                  <TableHead>Doctor</TableHead>
+                  <TableHead>id_consultorio</TableHead>
                   <TableHead>Consultorio</TableHead>
+                  <TableHead>Fecha</TableHead>
                   <TableHead>Motivo</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <TableHead>Centro</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCitas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                    <TableCell colSpan={9} className="text-center text-gray-500 py-8">
                       No hay citas registradas en {selectedCenter}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredCitas.map((cita) => (
                     <TableRow key={cita.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">{cita.fecha}</TableCell>
-                      <TableCell>{cita.hora}</TableCell>
+                      <TableCell className="font-medium">{cita.id}</TableCell>
+                      <TableCell className="font-medium">{cita.pacienteId}</TableCell>
                       <TableCell>{getPacienteNombre(cita.pacienteId)}</TableCell>
-                      <TableCell>{getDoctorNombre(cita.doctorId)}</TableCell>
+                      <TableCell className="font-medium">{cita.consultorioId}</TableCell>
                       <TableCell>{getConsultorioNumero(cita.consultorioId)}</TableCell>
+                      <TableCell className="font-medium">{cita.fecha}</TableCell>
                       <TableCell>{cita.motivo}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={getEstadoColor(cita.estado)}>
-                          {cita.estado}
-                        </Badge>
-                      </TableCell>
+                      <TableCell>{String((cita as any).centroMedico ?? '')}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -295,6 +293,16 @@ export function CitasManager({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
+              <Label htmlFor="id_cita">ID Cita (opcional)</Label>
+              <Input
+                id="id_cita"
+                type="number"
+                value={(formData as any).id}
+                onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                placeholder="Dejar vacío para autogenerar"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="paciente">Paciente</Label>
               <Select
                 value={formData.pacienteId}
@@ -313,30 +321,10 @@ export function CitasManager({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="doctor">Doctor</Label>
-              <Select
-                value={formData.doctorId}
-                onValueChange={(value) => setFormData({ ...formData, doctorId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar doctor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {doctoresCentro.map((doctor) => (
-                    <SelectItem key={doctor.id} value={doctor.id}>
-                      Dr. {doctor.nombre} {doctor.apellido}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="consultorio">Consultorio</Label>
               <Select
                 value={formData.consultorioId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, consultorioId: value })
-                }
+                onValueChange={(value) => setFormData({ ...formData, consultorioId: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar consultorio" />
@@ -351,20 +339,17 @@ export function CitasManager({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="estado">Estado</Label>
-              <Select
-                value={formData.estado}
-                onValueChange={(value: any) => setFormData({ ...formData, estado: value })}
+              <Label htmlFor="centro_medico">Centro Médico</Label>
+              <select
+                id="centro_medico"
+                value={(formData as any).centroMedico}
+                onChange={(e) => setFormData({ ...formData, centroMedico: e.target.value })}
+                className="border rounded px-3 py-2 text-sm"
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Programada">Programada</SelectItem>
-                  <SelectItem value="Completada">Completada</SelectItem>
-                  <SelectItem value="Cancelada">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value={"1"}>CENTRO</option>
+                <option value={"2"}>SUR</option>
+                <option value={"0"}>NORTE</option>
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fecha">Fecha</Label>
@@ -373,15 +358,6 @@ export function CitasManager({
                 type="date"
                 value={formData.fecha}
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hora">Hora</Label>
-              <Input
-                id="hora"
-                type="time"
-                value={formData.hora}
-                onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
               />
             </div>
             <div className="space-y-2 col-span-2">

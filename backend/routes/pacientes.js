@@ -4,6 +4,8 @@ const pacientesController = require('../controllers/pacientesController');
 
 // GET /api/pacientes?sede=centro|norte|sur
 router.get('/', pacientesController.getPacientes);
+// GET /api/pacientes/:id?sede=centro|norte|sur
+router.get('/:id', pacientesController.getPacienteById);
 // POST /api/pacientes?sede=centro|norte|sur
 router.post('/', pacientesController.addPaciente);
 // PUT /api/pacientes/:id?sede=centro|norte|sur

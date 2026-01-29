@@ -9,15 +9,12 @@ import { Plus, Edit, Trash2, Search } from "lucide-react";
 
 interface Paciente {
   id: string;
+  cedula: string;
   nombre: string;
   apellido: string;
-  cedula: string;
   fechaNacimiento: string;
-  telefono: string;
-  email: string;
-  direccion: string;
-  centroMedico: string;
   genero: string;
+  centroMedico: string;
 }
 
 interface PacientesManagerProps {
@@ -48,9 +45,6 @@ export function PacientesManager({
     apellido: "",
     cedula: "",
     fechaNacimiento: "",
-    telefono: "",
-    email: "",
-    direccion: "",
     genero: "",
     centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
   });
@@ -58,12 +52,14 @@ export function PacientesManager({
   const filteredPacientes = pacientes.filter((p) =>
     (p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.cedula.includes(searchTerm))
+      p.cedula.includes(searchTerm) ||
+      p.id.includes(searchTerm))
   );
 
-  const handleOpenDialog = (paciente?: Paciente) => {
+  const handleOpenDialog = async (paciente?: Paciente) => {
     if (paciente) {
       setEditingPaciente(paciente);
+
       // Asegurar que centroMedico sea código numérico en string
       const centroStr = paciente.centroMedico !== undefined && paciente.centroMedico !== null
         ? (isNaN(Number(paciente.centroMedico))
@@ -71,18 +67,53 @@ export function PacientesManager({
             : String(Number(paciente.centroMedico)))
         : (selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0');
 
+      // Prefill inmediato usando el objeto de la lista para evitar campos vacíos
+      const idVal = paciente.id ? paciente.id.toString() : "";
+      let fechaVal = "";
+      if (paciente.fechaNacimiento) {
+        try {
+          const d = new Date(paciente.fechaNacimiento);
+          if (!isNaN(d.getTime())) fechaVal = d.toISOString().split('T')[0];
+          else if (typeof paciente.fechaNacimiento === 'string') fechaVal = paciente.fechaNacimiento.split('T')[0] || paciente.fechaNacimiento;
+        } catch (e) {
+          fechaVal = paciente.fechaNacimiento as unknown as string;
+        }
+      }
+
       setFormData({
-        id: paciente.id || "",
+        id: idVal,
         nombre: paciente.nombre,
         apellido: paciente.apellido,
         cedula: paciente.cedula,
-        fechaNacimiento: paciente.fechaNacimiento,
-        telefono: paciente.telefono,
-        email: paciente.email,
-        direccion: paciente.direccion,
+        fechaNacimiento: fechaVal,
         genero: paciente.genero || "",
         centroMedico: centroStr,
       });
+
+      // Luego intentar obtener datos completos del backend y actualizar el formulario
+      try {
+        const sede = selectedCenter.toLowerCase();
+        if (paciente.id) {
+          const res = await fetch(`http://localhost:4000/api/pacientes/${paciente.id}?sede=${sede}`);
+          if (res.ok) {
+            const full = await res.json();
+            const idFull = full.id_paciente?.toString() || full.id?.toString() || idVal;
+            let fechaFull = fechaVal;
+            if (full.fecha_nacimiento) {
+              try {
+                const d2 = new Date(full.fecha_nacimiento);
+                if (!isNaN(d2.getTime())) fechaFull = d2.toISOString().split('T')[0];
+                else if (typeof full.fecha_nacimiento === 'string') fechaFull = full.fecha_nacimiento.split('T')[0] || full.fecha_nacimiento;
+              } catch (e) {
+                fechaFull = full.fecha_nacimiento;
+              }
+            }
+            setFormData(prev => ({ ...prev, id: idFull, nombre: full.nombre || prev.nombre, apellido: full.apellido || prev.apellido, cedula: full.cedula || prev.cedula, fechaNacimiento: fechaFull, genero: full.genero || prev.genero, centroMedico: (full.centro_medico !== undefined ? String(full.centro_medico) : prev.centroMedico) }));
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudo obtener paciente completo, usando datos de la lista', e);
+      }
     } else {
       setEditingPaciente(null);
       setFormData({
@@ -91,9 +122,6 @@ export function PacientesManager({
         apellido: "",
         cedula: "",
         fechaNacimiento: "",
-        telefono: "",
-        email: "",
-        direccion: "",
         genero: "",
         centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
       });
@@ -109,7 +137,12 @@ export function PacientesManager({
   const handleSubmit = () => {
     const pacienteData = { ...formData };
     if (editingPaciente) {
-      onEditPaciente(editingPaciente.id, pacienteData);
+      const idToUse = (editingPaciente.id && editingPaciente.id.toString()) || (formData.id && formData.id.toString()) || "";
+      if (!idToUse) {
+        console.error('PacientesManager: id vacío al intentar actualizar paciente, operación cancelada');
+        return;
+      }
+      onEditPaciente(idToUse, pacienteData);
     } else {
       onAddPaciente(pacienteData);
     }
@@ -165,14 +198,15 @@ export function PacientesManager({
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead>Cédula</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Apellido</TableHead>
-                  <TableHead>Fecha Nac.</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Cédula</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Apellido</TableHead>
+                    <TableHead>Fecha Nac.</TableHead>
+                    <TableHead>Género</TableHead>
+                    <TableHead>Centro Médico</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPacientes.length === 0 ? (
@@ -184,12 +218,13 @@ export function PacientesManager({
                 ) : (
                   filteredPacientes.map((paciente) => (
                     <TableRow key={paciente.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">{paciente.id}</TableCell>
                       <TableCell className="font-medium">{paciente.cedula}</TableCell>
                       <TableCell>{paciente.nombre}</TableCell>
                       <TableCell>{paciente.apellido}</TableCell>
                       <TableCell>{paciente.fechaNacimiento}</TableCell>
-                      <TableCell>{paciente.telefono}</TableCell>
-                      <TableCell>{paciente.email}</TableCell>
+                      <TableCell>{paciente.genero}</TableCell>
+                      <TableCell>{paciente.centroMedico}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -233,6 +268,7 @@ export function PacientesManager({
                             id="id"
                             value={formData.id}
                             onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                            readOnly={!!editingPaciente}
                           />
                         </div>
                         <div className="space-y-2">
@@ -299,31 +335,7 @@ export function PacientesManager({
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="telefono">Teléfono</Label>
-              <Input
-                id="telefono"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="direccion">Dirección</Label>
-              <Input
-                id="direccion"
-                value={formData.direccion}
-                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-              />
-            </div>
+            
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>
