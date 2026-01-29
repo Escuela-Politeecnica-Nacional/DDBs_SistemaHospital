@@ -46,8 +46,7 @@ interface Doctor {
 interface Consultorio {
   id: string;
   numero: string;
-  piso: string;
-  disponible: boolean;
+  ubicacion: string;
   centroMedico: string;
 }
 
@@ -362,9 +361,8 @@ export default function App() {
       const consultoriosAdaptados = data.map((c: any) => ({
         id: c.id_consultorio?.toString() || c.id?.toString() || '',
         numero: c.numero || '',
-        piso: '', // Ajustar si se agrega en backend
-        disponible: true, // Ajustar si se agrega en backend
-        centroMedico: selectedCenter,
+        ubicacion: c.ubicacion || c.ubicacion_desc || '',
+        centroMedico: centroLabel(c.centro_medico || c.centroMedico || selectedCenter),
       }));
       setConsultorios(consultoriosAdaptados);
     } catch (error) {
@@ -380,7 +378,7 @@ export default function App() {
   /**
    * Agrega un consultorio usando la API.
    */
-  const handleAddConsultorio = async (consultorio: Omit<Consultorio, "id">) => {
+  const handleAddConsultorio = async (consultorio: Consultorio) => {
     try {
       const sede = selectedCenter.toLowerCase();
       await fetch(`http://localhost:4000/api/consultorios?sede=${sede}&filter=${consultoriosFilter}`,
@@ -388,8 +386,10 @@ export default function App() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            id_consultorio: (consultorio as any).id || undefined,
             numero: consultorio.numero,
-            ubicacion: consultorio.piso, // Ajustar si corresponde
+            ubicacion: consultorio.ubicacion,
+            centro_medico: consultorio.centroMedico || selectedCenter
           })
         });
       fetchConsultorios();
@@ -408,7 +408,8 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             numero: consultorio.numero,
-            ubicacion: consultorio.piso, // Ajustar si corresponde
+            ubicacion: consultorio.ubicacion,
+            centro_medico: consultorio.centroMedico || selectedCenter,
           })
         });
       fetchConsultorios();

@@ -11,16 +11,15 @@ import { Plus, Edit, Trash2, Search } from "lucide-react";
 interface Consultorio {
   id: string;
   numero: string;
-  piso: string;
-  disponible: boolean;
+  ubicacion: string;
   centroMedico: string;
 }
 
 interface ConsultoriosManagerProps {
   selectedCenter: string;
   consultorios: Consultorio[];
-  onAddConsultorio: (consultorio: Omit<Consultorio, "id">) => void;
-  onEditConsultorio: (id: string, consultorio: Omit<Consultorio, "id">) => void;
+  onAddConsultorio: (consultorio: Consultorio) => void; // create: provide id + fields
+  onEditConsultorio: (id: string, consultorio: Omit<Consultorio, "id">) => void; // edit: only numero, ubicacion, centroMedico
   onDeleteConsultorio: (id: string) => void;
   currentFilter?: string;
   onFilterChange?: (filter: string) => void;
@@ -40,30 +39,33 @@ export function ConsultoriosManager({
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     numero: "",
-    piso: "",
-    disponible: true,
+    ubicacion: "",
+    centroMedico: selectedCenter,
   });
+  const [idValue, setIdValue] = useState("");
 
   const filteredConsultorios = consultorios.filter((c) =>
     (c.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.piso.toLowerCase().includes(searchTerm.toLowerCase()))
+      c.ubicacion.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleOpenDialog = (consultorio?: Consultorio) => {
     if (consultorio) {
       setEditingConsultorio(consultorio);
+      setIdValue(consultorio.id);
       setFormData({
         numero: consultorio.numero,
-        piso: consultorio.piso,
-        disponible: consultorio.disponible,
+        ubicacion: consultorio.ubicacion,
+        centroMedico: consultorio.centroMedico || selectedCenter,
       });
     } else {
       setEditingConsultorio(null);
       setFormData({
         numero: "",
-        piso: "",
-        disponible: true,
+        ubicacion: "",
+        centroMedico: selectedCenter,
       });
+      setIdValue("");
     }
     setIsDialogOpen(true);
   };
@@ -74,11 +76,13 @@ export function ConsultoriosManager({
   };
 
   const handleSubmit = () => {
-    const consultorioData = { ...formData, centroMedico: selectedCenter };
+    const consultorioData = { ...formData, centroMedico: formData.centroMedico || selectedCenter } as any;
     if (editingConsultorio) {
-      onEditConsultorio(editingConsultorio.id, consultorioData);
+      onEditConsultorio(editingConsultorio.id, { numero: consultorioData.numero, ubicacion: consultorioData.ubicacion, centroMedico: consultorioData.centroMedico });
     } else {
-      onAddConsultorio(consultorioData);
+      // create expects an id provided (or empty string to let backend decide)
+      const payload: Consultorio = { id: idValue?.toString() || '', numero: consultorioData.numero, ubicacion: consultorioData.ubicacion, centroMedico: consultorioData.centroMedico };
+      onAddConsultorio(payload);
     }
     handleCloseDialog();
   };
@@ -130,12 +134,12 @@ export function ConsultoriosManager({
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead>Número</TableHead>
-                  <TableHead>Piso</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Centro Médico</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Número</TableHead>
+                    <TableHead>Ubicación</TableHead>
+                    <TableHead>Centro Médico</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredConsultorios.length === 0 ? (
@@ -147,20 +151,9 @@ export function ConsultoriosManager({
                 ) : (
                   filteredConsultorios.map((consultorio) => (
                     <TableRow key={consultorio.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">{consultorio.id}</TableCell>
                       <TableCell className="font-medium">{consultorio.numero}</TableCell>
-                      <TableCell>{consultorio.piso}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            consultorio.disponible
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }
-                        >
-                          {consultorio.disponible ? "Disponible" : "Ocupado"}
-                        </Badge>
-                      </TableCell>
+                      <TableCell>{consultorio.ubicacion}</TableCell>
                       <TableCell>{consultorio.centroMedico}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -200,6 +193,10 @@ export function ConsultoriosManager({
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
+              <Label htmlFor="id_consultorio">ID Consultorio</Label>
+              <Input id="id_consultorio" value={idValue} onChange={(e) => setIdValue(e.target.value)} placeholder="Dejar vacío para autogenerar" readOnly={!!editingConsultorio} />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="numero">Número de Consultorio</Label>
               <Input
                 id="numero"
@@ -209,27 +206,22 @@ export function ConsultoriosManager({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="piso">Piso</Label>
+              <Label htmlFor="ubicacion">Ubicación</Label>
               <Input
-                id="piso"
-                value={formData.piso}
-                onChange={(e) => setFormData({ ...formData, piso: e.target.value })}
-                placeholder="Ej: 1, 2, 3..."
+                id="ubicacion"
+                value={formData.ubicacion}
+                onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
+                placeholder="Ej: Ala Norte, Pasillo 3"
               />
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="disponible"
-                checked={formData.disponible}
-                onChange={(e) =>
-                  setFormData({ ...formData, disponible: e.target.checked })
-                }
-                className="rounded border-gray-300"
-              />
-              <Label htmlFor="disponible" className="cursor-pointer">
-                Consultorio disponible
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="centroMedico">Centro Médico</Label>
+              <select id="centroMedico" value={formData.centroMedico} onChange={(e) => setFormData({ ...formData, centroMedico: e.target.value })} className="border rounded px-3 py-2 text-sm">
+                <option value={selectedCenter}>{selectedCenter}</option>
+                <option value={"NORTE"}>Norte</option>
+                <option value={"CENTRO"}>Centro</option>
+                <option value={"SUR"}>Sur</option>
+              </select>
             </div>
           </div>
           <DialogFooter>

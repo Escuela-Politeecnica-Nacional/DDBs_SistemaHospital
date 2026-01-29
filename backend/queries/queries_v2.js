@@ -70,7 +70,8 @@ const queries = {};
 
     // QUERY: consultorios
     q.getConsultorios = `SELECT * FROM dbo.${table('consultorio', sede)} WHERE centro_medico = @centroVal`;
-    q.insertConsultorio = `INSERT INTO dbo.${table('consultorio', sede)} (numero, ubicacion, centro_medico) OUTPUT INSERTED.* VALUES (@numero, @ubicacion, @centro_medico)`;
+    // Accept id_consultorio when provided (some schemas don't use IDENTITY)
+    q.insertConsultorio = `INSERT INTO dbo.${table('consultorio', sede)} (id_consultorio, numero, ubicacion, centro_medico) OUTPUT INSERTED.* VALUES (@id_consultorio, @numero, @ubicacion, @centro_medico)`;
 
     // QUERY: doctores
     q.getDoctores = `SELECT * FROM dbo.${table('doctor', sede)} WHERE centro_medico = @centroVal`;
