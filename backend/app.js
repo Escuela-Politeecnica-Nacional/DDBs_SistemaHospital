@@ -29,6 +29,10 @@ app.use('/api/historial', historialRoutes);
 app.use('/api/especialidades', especialidadesRoutes);
 app.use('/api/centros', centrosRoutes);
 app.use('/api/auth', authRoutes);
+const statusRoutes = require('./routes/_status');
+app.use('/api/_status', statusRoutes);
+const inspectRoutes = require('./routes/_inspect');
+app.use('/api/_inspect', inspectRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

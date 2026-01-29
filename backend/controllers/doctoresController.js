@@ -31,12 +31,39 @@ async function getDoctores(req, res) {
     }
     const target = seats.includes(filterRaw) ? filterRaw : sede;
     const pool = await getConnection(target);
-    const sqlText = queries[target].getDoctores;
-    const result = await pool.request()
-      .input('centroVal', sql.Int, sedeToCentroId(target))
-      .query(sqlText);
-    console.log(`getDoctores: fetched ${result.recordset.length} rows (target=${target}, requestedBy=${sede})`);
-    res.json(result.recordset.map(r => ({ ...r, _sede: target })));
+
+    // helper to execute with centroVal
+    const tryQuery = async (sqlString) => await pool.request().input('centroVal', sql.Int, sedeToCentroId(target)).query(sqlString);
+
+    // Try configured query first
+    const sqlText = queries[target] && queries[target].getDoctores ? queries[target].getDoctores : null;
+    if (sqlText) {
+      try {
+        const result = await tryQuery(sqlText);
+        console.log(`getDoctores: fetched ${result.recordset.length} rows (target=${target}, requestedBy=${sede})`);
+        return res.json(result.recordset.map(r => ({ ...r, _sede: target })));
+      } catch (primaryErr) {
+        console.warn(`getDoctores: primary query failed for target='${target}':`, primaryErr && primaryErr.message ? primaryErr.message : primaryErr);
+      }
+    }
+
+    // Fallbacks: suffixed table then base table
+    const suffix = target.toUpperCase();
+    const candidates = [`dbo.doctor_${suffix}`, 'dbo.doctor'];
+    for (const tbl of candidates) {
+      const isSuffixed = tbl.toUpperCase().includes(`_${suffix}`);
+      const where = isSuffixed ? '' : 'WHERE centro_medico = @centroVal';
+      const q = `SELECT * FROM ${tbl} ${where}`;
+      try {
+        const r = await tryQuery(q);
+        console.log(`getDoctores: fallback succeeded using ${tbl} (rows=${r.recordset.length})`);
+        return res.json(r.recordset.map(rr => ({ ...rr, _sede: target })));
+      } catch (e) {
+        console.warn(`getDoctores: fallback ${tbl} failed:`, e && e.message ? e.message : e);
+      }
+    }
+
+    return res.status(500).json({ error: `No suitable doctor table found for target '${target}'` });
   } catch (err) {
     console.error('getDoctores error:', err);
     res.status(500).json({ error: err.message });

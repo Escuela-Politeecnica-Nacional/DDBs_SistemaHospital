@@ -18,40 +18,68 @@ async function getCitas(req, res) {
   try {
     if (filterRaw === 'todos' || filterRaw === 'all') {
       const promises = seats.map(async (s) => {
-        const pool = await getConnection(s);
-        const sqlText = queries[s].getCitas;
-        const result = await pool.request()
-          .input('centroVal', sql.Int, sedeToCentroId(s))
-          .query(sqlText);
-        console.log(`getCitas: fetched ${result.recordset.length} rows from DB (sede=${s})`);
-        return result.recordset.map(r => ({
-          id_cita: r.id_cita,
-          id_consultorio: r.id_consultorio,
-          id_paciente: r.id_paciente,
-          fecha: r.fecha,
-          motivo: r.motivo,
-          centro_medico: r.centro_medico,
-        }));
+        try {
+          const pool = await getConnection(s);
+          const sqlText = queries[s].getCitas;
+          const result = await pool.request()
+            .input('centroVal', sql.Int, sedeToCentroId(s))
+            .query(sqlText);
+          console.log(`getCitas: fetched ${result.recordset.length} rows from DB (sede=${s})`);
+          return result.recordset.map(r => ({
+            id_cita: r.id_cita,
+            id_consultorio: r.id_consultorio,
+            id_paciente: r.id_paciente,
+            fecha: r.fecha,
+            motivo: r.motivo,
+            centro_medico: r.centro_medico,
+          }));
+        } catch (errSeat) {
+          console.error(`getCitas: error fetching from sede='${s}':`, errSeat && errSeat.message ? errSeat.message : errSeat);
+          return [];
+        }
       });
       const parts = await Promise.all(promises);
       res.json(parts.flat());
       return;
     }
     const target = seats.includes(filterRaw) ? filterRaw : sede;
-    const pool = await getConnection(target);
-    const sqlText = queries[target].getCitas;
-    const result = await pool.request()
-      .input('centroVal', sql.Int, sedeToCentroId(target))
-      .query(sqlText);
-    console.log(`getCitas: fetched ${result.recordset.length} rows from DB (target=${target}, requestedBy=${sede})`);
-    res.json(result.recordset.map(r => ({
-      id_cita: r.id_cita,
-      id_consultorio: r.id_consultorio,
-      id_paciente: r.id_paciente,
-      fecha: r.fecha,
-      motivo: r.motivo,
-      centro_medico: r.centro_medico,
-    })));
+    console.log(`getCitas: requestedBy=${sede} filter=${filterRaw} -> target=${target}`);
+    let pool;
+    try {
+      pool = await getConnection(target);
+    } catch (connErr) {
+      console.error(`getCitas: failed to connect to target='${target}':`, connErr && connErr.message ? connErr.message : connErr);
+      return res.status(502).json({ error: `DB connection failed for target '${target}': ${connErr.message || connErr}` });
+    }
+    const sqlText = queries[target] && queries[target].getCitas ? queries[target].getCitas : null;
+    const tryQuery = async (sqlString) => await pool.request().input('centroVal', sql.Int, sedeToCentroId(target)).query(sqlString);
+
+    if (sqlText) {
+      try {
+        const result = await tryQuery(sqlText);
+        console.log(`getCitas: fetched ${result.recordset.length} rows from DB (target=${target}, requestedBy=${sede})`);
+        return res.json(result.recordset.map(r => ({ id_cita: r.id_cita, id_consultorio: r.id_consultorio, id_paciente: r.id_paciente, fecha: r.fecha, motivo: r.motivo, centro_medico: r.centro_medico })));
+      } catch (primaryErr) {
+        console.warn(`getCitas: primary query failed for target='${target}':`, primaryErr && primaryErr.message ? primaryErr.message : primaryErr);
+      }
+    }
+
+    const suffix = target.toUpperCase();
+    const candidates = [`dbo.cita_${suffix}`, 'dbo.cita'];
+    for (const tbl of candidates) {
+      const isSuffixed = tbl.toUpperCase().includes(`_${suffix}`);
+      const where = isSuffixed ? '' : 'WHERE centro_medico = @centroVal';
+      const q = `SELECT id_cita, id_consultorio, id_paciente, fecha, motivo, centro_medico FROM ${tbl} ${where}`;
+      try {
+        const r = await tryQuery(q);
+        console.log(`getCitas: fallback succeeded using ${tbl} (rows=${r.recordset.length})`);
+        return res.json(r.recordset.map(rr => ({ id_cita: rr.id_cita, id_consultorio: rr.id_consultorio, id_paciente: rr.id_paciente, fecha: rr.fecha, motivo: rr.motivo, centro_medico: rr.centro_medico })));
+      } catch (e) {
+        console.warn(`getCitas: fallback ${tbl} failed:`, e && e.message ? e.message : e);
+      }
+    }
+
+    return res.status(500).json({ error: `No suitable cita table found for target '${target}'` });
   } catch (err) {
     console.error('getCitas error:', err);
     res.status(500).json({ error: err.message });

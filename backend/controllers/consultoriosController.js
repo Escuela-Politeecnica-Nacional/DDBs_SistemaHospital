@@ -30,12 +30,35 @@ async function getConsultorios(req, res) {
     }
     const target = seats.includes(filterRaw) ? filterRaw : sede;
     const pool = await getConnection(target);
-    const sqlText = queries[target].getConsultorios;
-    const result = await pool.request()
-      .input('centroVal', sql.Int, sedeToCentroId(target))
-      .query(sqlText);
-    console.log(`getConsultorios: fetched ${result.recordset.length} rows (target=${target}, requestedBy=${sede})`);
-    res.json(result.recordset.map(r => ({ ...r, _sede: target })));
+    const tryQuery = async (sqlString) => await pool.request().input('centroVal', sql.Int, sedeToCentroId(target)).query(sqlString);
+
+    const sqlText = queries[target] && queries[target].getConsultorios ? queries[target].getConsultorios : null;
+    if (sqlText) {
+      try {
+        const result = await tryQuery(sqlText);
+        console.log(`getConsultorios: fetched ${result.recordset.length} rows (target=${target}, requestedBy=${sede})`);
+        return res.json(result.recordset.map(r => ({ ...r, _sede: target })));
+      } catch (primaryErr) {
+        console.warn(`getConsultorios: primary query failed for target='${target}':`, primaryErr && primaryErr.message ? primaryErr.message : primaryErr);
+      }
+    }
+
+    const suffix = target.toUpperCase();
+    const candidates = [`dbo.consultorio_${suffix}`, 'dbo.consultorio'];
+    for (const tbl of candidates) {
+      const isSuffixed = tbl.toUpperCase().includes(`_${suffix}`);
+      const where = isSuffixed ? '' : 'WHERE centro_medico = @centroVal';
+      const q = `SELECT * FROM ${tbl} ${where}`;
+      try {
+        const r = await tryQuery(q);
+        console.log(`getConsultorios: fallback succeeded using ${tbl} (rows=${r.recordset.length})`);
+        return res.json(r.recordset.map(rr => ({ ...rr, _sede: target })));
+      } catch (e) {
+        console.warn(`getConsultorios: fallback ${tbl} failed:`, e && e.message ? e.message : e);
+      }
+    }
+
+    return res.status(500).json({ error: `No suitable consultorio table found for target '${target}'` });
   } catch (err) {
     console.error('getConsultorios error:', err);
     res.status(500).json({ error: err.message });

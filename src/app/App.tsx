@@ -179,6 +179,12 @@ export default function App() {
     try {
       const sede = selectedCenter.toLowerCase();
       const res = await fetch(`http://localhost:4000/api/pacientes?sede=${sede}&filter=${pacientesFilter}`);
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        console.error(`fetchPacientes: API returned ${res.status} ${res.statusText} - ${errBody}`);
+        setPacientes([]);
+        return;
+      }
       const data = await res.json();
       const pacientesAdaptados = data.map((p: any) => ({
         id: p.id_paciente?.toString() || p.id?.toString() || '',
@@ -434,6 +440,12 @@ export default function App() {
     try {
       const sede = selectedCenter.toLowerCase();
       const res = await fetch(`http://localhost:4000/api/citas?sede=${sede}&filter=${citasFilter}`);
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        console.error(`fetchCitas: API returned ${res.status} ${res.statusText} - ${errBody}`);
+        setCitas([]);
+        return;
+      }
       const data = await res.json();
       const citasAdaptadas = data.map((c: any) => ({
         id: c.id_cita?.toString() || c.id?.toString() || '',
