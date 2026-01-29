@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { Button } from "./components/ui/button";
 import { Activity, LayoutDashboard, Users, UserCog, Building2, Calendar, FileText } from "lucide-react";
 import { Dashboard } from "./components/Dashboard";
@@ -8,8 +7,12 @@ import { DoctoresManager } from "./components/DoctoresManager";
 import { ConsultoriosManager } from "./components/ConsultoriosManager";
 import { CitasManager } from "./components/CitasManager";
 import { HistorialMedico } from "./components/HistorialMedico";
+import { HistorialesManager } from "./components/HistorialesManager";
+import { EspecialidadesManager } from "./components/EspecialidadesManager";
+import { CentrosMedicosManager } from "./components/CentrosMedicosManager";
+import Login from "./components/Login";
 
-type Vista = "dashboard" | "pacientes" | "doctores" | "consultorios" | "citas" | "historial";
+type Vista = "dashboard" | "pacientes" | "doctores" | "consultorios" | "citas" | "historial" | "especialidades" | "centros" | "historiales";
 
 interface Especialidad {
   id: string;
@@ -25,6 +28,7 @@ interface Paciente {
   telefono: string;
   email: string;
   direccion: string;
+  genero: string;
   centroMedico: string;
 }
 
@@ -68,9 +72,24 @@ interface Historial {
 }
 
 export default function App() {
-  const [selectedCenter, setSelectedCenter] = useState<string>("CENTRO");
+  const [selectedCenter, setSelectedCenter] = useState<string>(localStorage.getItem('sede') || "");
   const [currentView, setCurrentView] = useState<Vista>("dashboard");
   const [selectedCitaId, setSelectedCitaId] = useState<string>("");
+  const [pacientesFilter, setPacientesFilter] = useState<string>(selectedCenter ? selectedCenter.toLowerCase() : 'centro');
+  const [doctoresFilter, setDoctoresFilter] = useState<string>(selectedCenter ? selectedCenter.toLowerCase() : 'centro');
+  const [consultoriosFilter, setConsultoriosFilter] = useState<string>(selectedCenter ? selectedCenter.toLowerCase() : 'centro');
+  const [citasFilter, setCitasFilter] = useState<string>(selectedCenter ? selectedCenter.toLowerCase() : 'centro');
+  const [historialesFilter, setHistorialesFilter] = useState<string>(selectedCenter ? selectedCenter.toLowerCase() : 'centro');
+
+  // Ensure module filters follow the currently selected center (e.g., after login)
+  useEffect(() => {
+    const s = selectedCenter ? selectedCenter.toLowerCase() : 'centro';
+    setPacientesFilter(s);
+    setDoctoresFilter(s);
+    setConsultoriosFilter(s);
+    setCitasFilter(s);
+    setHistorialesFilter(s);
+  }, [selectedCenter]);
 
   // Datos replicados (disponibles en ambos centros)
   const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
@@ -145,7 +164,7 @@ export default function App() {
   const fetchPacientes = async () => {
     try {
       const sede = selectedCenter.toLowerCase();
-      const res = await fetch(`http://localhost:4000/api/pacientes?sede=${sede}`);
+      const res = await fetch(`http://localhost:4000/api/pacientes?sede=${sede}&filter=${pacientesFilter}`);
       const data = await res.json();
       const pacientesAdaptados = data.map((p: any) => ({
         id: p.id_paciente?.toString() || p.id?.toString() || '',
@@ -156,7 +175,8 @@ export default function App() {
         telefono: p.telefono || '',
         email: p.email || '',
         direccion: p.direccion || '',
-        centroMedico: selectedCenter,
+        genero: p.genero || '',
+        centroMedico: p.centro_medico || p.info_centro_medico || p.detalle_centro_medico || selectedCenter,
       }));
       setPacientes(pacientesAdaptados);
     } catch (error) {
@@ -167,23 +187,34 @@ export default function App() {
   useEffect(() => {
     fetchPacientes();
     // eslint-disable-next-line
-  }, [selectedCenter]);
+  }, [selectedCenter, pacientesFilter]);
 
   /**
    * Agrega un paciente usando la API.
    */
-  const handleAddPaciente = async (paciente: Omit<Paciente, "id">) => {
+  const handleAddPaciente = async (paciente: any) => {
     try {
       const sede = selectedCenter.toLowerCase();
+      // usar centro_medico provisto en el formulario si existe, si no mapear desde selectedCenter
+      const centroMedicoValue = paciente.centroMedico !== undefined && paciente.centroMedico !== ''
+        ? Number(paciente.centroMedico)
+        : (sede === 'centro' ? 1 : sede === 'sur' ? 2 : 0);
+
       await fetch(`http://localhost:4000/api/pacientes?sede=${sede}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            id_paciente: paciente.id || undefined,
+            cedula: paciente.cedula,
+            centro_medico: centroMedicoValue,
             nombre: paciente.nombre,
             apellido: paciente.apellido,
             fechaNacimiento: paciente.fechaNacimiento,
-            genero: "", // Puedes ajustar según tu modelo
+            genero: paciente.genero,
+            telefono: paciente.telefono,
+            email: paciente.email,
+            direccion: paciente.direccion,
           })
         });
       fetchPacientes();
@@ -204,7 +235,10 @@ export default function App() {
             nombre: paciente.nombre,
             apellido: paciente.apellido,
             fechaNacimiento: paciente.fechaNacimiento,
-            genero: "", // Puedes ajustar según tu modelo
+            genero: paciente.genero,
+            telefono: paciente.telefono,
+            email: paciente.email,
+            direccion: paciente.direccion,
           })
         });
       fetchPacientes();
@@ -230,7 +264,7 @@ export default function App() {
   const fetchDoctores = async () => {
     try {
       const sede = selectedCenter.toLowerCase();
-      const res = await fetch(`http://localhost:4000/api/doctores?sede=${sede}`);
+      const res = await fetch(`http://localhost:4000/api/doctores?sede=${sede}&filter=${doctoresFilter}`);
       const data = await res.json();
       const doctoresAdaptados = data.map((d: any) => ({
         id: d.id_doctor?.toString() || d.id?.toString() || '',
@@ -251,7 +285,7 @@ export default function App() {
   useEffect(() => {
     fetchDoctores();
     // eslint-disable-next-line
-  }, [selectedCenter]);
+  }, [selectedCenter, doctoresFilter]);
 
   /**
    * Agrega un doctor usando la API.
@@ -259,7 +293,7 @@ export default function App() {
   const handleAddDoctor = async (doctor: Omit<Doctor, "id">) => {
     try {
       const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/doctores?sede=${sede}`,
+      await fetch(`http://localhost:4000/api/doctores?sede=${sede}&filter=${doctoresFilter}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -312,7 +346,7 @@ export default function App() {
   const fetchConsultorios = async () => {
     try {
       const sede = selectedCenter.toLowerCase();
-      const res = await fetch(`http://localhost:4000/api/consultorios?sede=${sede}`);
+      const res = await fetch(`http://localhost:4000/api/consultorios?sede=${sede}&filter=${consultoriosFilter}`);
       const data = await res.json();
       const consultoriosAdaptados = data.map((c: any) => ({
         id: c.id_consultorio?.toString() || c.id?.toString() || '',
@@ -330,7 +364,7 @@ export default function App() {
   useEffect(() => {
     fetchConsultorios();
     // eslint-disable-next-line
-  }, [selectedCenter]);
+  }, [selectedCenter, consultoriosFilter]);
 
   /**
    * Agrega un consultorio usando la API.
@@ -338,7 +372,7 @@ export default function App() {
   const handleAddConsultorio = async (consultorio: Omit<Consultorio, "id">) => {
     try {
       const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/consultorios?sede=${sede}`,
+      await fetch(`http://localhost:4000/api/consultorios?sede=${sede}&filter=${consultoriosFilter}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -389,7 +423,7 @@ export default function App() {
   const fetchCitas = async () => {
     try {
       const sede = selectedCenter.toLowerCase();
-      const res = await fetch(`http://localhost:4000/api/citas?sede=${sede}`);
+      const res = await fetch(`http://localhost:4000/api/citas?sede=${sede}&filter=${citasFilter}`);
       const data = await res.json();
       const citasAdaptadas = data.map((c: any) => ({
         id: c.id_cita?.toString() || c.id?.toString() || '',
@@ -410,7 +444,7 @@ export default function App() {
   useEffect(() => {
     fetchCitas();
     // eslint-disable-next-line
-  }, [selectedCenter]);
+  }, [selectedCenter, citasFilter]);
 
   /**
    * Agrega una cita usando la API.
@@ -418,7 +452,7 @@ export default function App() {
   const handleAddCita = async (cita: Omit<Cita, "id">) => {
     try {
       const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/citas?sede=${sede}`,
+      await fetch(`http://localhost:4000/api/citas?sede=${sede}&filter=${citasFilter}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -467,14 +501,44 @@ export default function App() {
 
   const [historiales, setHistoriales] = useState<Historial[]>([]);
 
+  const [centros, setCentros] = useState<any[]>([]);
+
+  /**
+   * Carga los centros médicos desde el backend.
+   */
+  const fetchCentros = async () => {
+    try {
+      const sede = selectedCenter ? selectedCenter.toLowerCase() : 'centro';
+      const res = await fetch(`http://localhost:4000/api/centros?sede=${sede}`);
+      const data = await res.json();
+      console.log(`fetchCentros: received ${Array.isArray(data) ? data.length : 0} items from API`);
+      const centrosAdaptados = data.map((c: any) => ({
+        id: c.id_centro_medico?.toString() || c.id?.toString() || '',
+        nombre: c.nombre || '',
+        direccion: c.direccion || '',
+        telefono: c.telefono || '',
+        email: c.email || '',
+        sede: c.sede || '',
+      }));
+      setCentros(centrosAdaptados);
+    } catch (error) {
+      setCentros([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchCentros();
+  }, [selectedCenter]);
+
   /**
    * Carga los historiales médicos desde el backend según la sede seleccionada.
    */
   const fetchHistoriales = async () => {
     try {
       const sede = selectedCenter.toLowerCase();
-      const res = await fetch(`http://localhost:4000/api/historial?sede=${sede}`);
+      const res = await fetch(`http://localhost:4000/api/historial?sede=${sede}&filter=${historialesFilter}`);
       const data = await res.json();
+      console.log(`fetchHistoriales: received ${Array.isArray(data) ? data.length : 0} items from API`);
       const historialesAdaptados = data.map((h: any) => ({
         id: h.id_historial?.toString() || h.id?.toString() || '',
         citaId: h.id_cita?.toString() || '',
@@ -492,7 +556,7 @@ export default function App() {
   useEffect(() => {
     fetchHistoriales();
     // eslint-disable-next-line
-  }, [selectedCenter]);
+  }, [selectedCenter, historialesFilter]);
 
   /**
    * Agrega un historial médico usando la API.
@@ -500,7 +564,7 @@ export default function App() {
   const handleAddHistorial = async (historial: Omit<Historial, "id">) => {
     try {
       const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/historial?sede=${sede}`,
+      await fetch(`http://localhost:4000/api/historial?sede=${sede}&filter=${historialesFilter}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -598,12 +662,16 @@ export default function App() {
   const menuItems = [
     { id: "dashboard" as Vista, label: "Dashboard", icon: LayoutDashboard },
     { id: "pacientes" as Vista, label: "Pacientes", icon: Users },
+    { id: "especialidades" as Vista, label: "Especialidades", icon: FileText },
+    { id: "historiales" as Vista, label: "Historiales", icon: FileText },
     { id: "doctores" as Vista, label: "Doctores", icon: UserCog },
     { id: "consultorios" as Vista, label: "Consultorios", icon: Building2 },
     { id: "citas" as Vista, label: "Citas", icon: Calendar },
+    { id: "centros" as Vista, label: "Centros Médicos", icon: Building2 },
   ];
 
   return (
+    !selectedCenter ? <Login onLogin={(sede:string) => { setSelectedCenter(sede.toUpperCase()); localStorage.setItem('sede', sede.toUpperCase()); }} /> :
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
@@ -620,18 +688,19 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-gray-500 mb-1">Centro Médico Activo</span>
-                <Select value={selectedCenter} onValueChange={setSelectedCenter}>
-                  <SelectTrigger className="w-[180px] border-2 border-blue-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CENTRO">🏥 CENTRO</SelectItem>
-                    <SelectItem value="SUR">🏥 SUR</SelectItem>
-                    <SelectItem value="NORTE">🏥 NORTE</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end">
+                  <span className="text-xs text-gray-500 mb-1">Centro Médico Activo</span>
+                  <div className="w-[180px] border-2 border-blue-200 rounded px-3 py-1 text-sm font-medium">{selectedCenter}</div>
+                </div>
+                <div>
+                  <Button variant="ghost" onClick={() => {
+                    // logout: clear stored sede and reset app state
+                    localStorage.removeItem('sede');
+                    setSelectedCenter('');
+                    setCurrentView('dashboard');
+                  }}>Cerrar sesión</Button>
+                </div>
               </div>
             </div>
           </div>
@@ -678,6 +747,8 @@ export default function App() {
             onAddPaciente={handleAddPaciente}
             onEditPaciente={handleEditPaciente}
             onDeletePaciente={handleDeletePaciente}
+            currentFilter={pacientesFilter}
+            onFilterChange={(f) => setPacientesFilter(f)}
           />
         )}
 
@@ -689,6 +760,8 @@ export default function App() {
             onAddDoctor={handleAddDoctor}
             onEditDoctor={handleEditDoctor}
             onDeleteDoctor={handleDeleteDoctor}
+            currentFilter={doctoresFilter}
+            onFilterChange={(f) => setDoctoresFilter(f)}
           />
         )}
 
@@ -699,6 +772,8 @@ export default function App() {
             onAddConsultorio={handleAddConsultorio}
             onEditConsultorio={handleEditConsultorio}
             onDeleteConsultorio={handleDeleteConsultorio}
+            currentFilter={consultoriosFilter}
+            onFilterChange={(f) => setConsultoriosFilter(f)}
           />
         )}
 
@@ -713,6 +788,8 @@ export default function App() {
             onEditCita={handleEditCita}
             onDeleteCita={handleDeleteCita}
             onViewHistorial={handleViewHistorial}
+            currentFilter={citasFilter}
+            onFilterChange={(f) => setCitasFilter(f)}
           />
         )}
 
@@ -726,6 +803,26 @@ export default function App() {
             consultorios={consultorios}
             onBack={() => setCurrentView("citas")}
           />
+        )}
+
+        {currentView === "historiales" && (
+          <HistorialesManager
+            historiales={historiales}
+            onViewDetalle={(citaId) => {
+              setSelectedCitaId(citaId);
+              setCurrentView("historial");
+            }}
+            currentFilter={historialesFilter}
+            onFilterChange={(f) => setHistorialesFilter(f)}
+          />
+        )}
+
+        {currentView === "especialidades" && (
+          <EspecialidadesManager especialidades={especialidades} />
+        )}
+
+        {currentView === "centros" && (
+          <CentrosMedicosManager centros={centros} />
         )}
       </main>
 

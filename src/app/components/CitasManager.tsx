@@ -50,6 +50,8 @@ interface CitasManagerProps {
   onEditCita: (id: string, cita: Omit<Cita, "id">) => void;
   onDeleteCita: (id: string) => void;
   onViewHistorial: (citaId: string) => void;
+  currentFilter?: string;
+  onFilterChange?: (filter: string) => void;
 }
 
 export function CitasManager({
@@ -62,6 +64,8 @@ export function CitasManager({
   onEditCita,
   onDeleteCita,
   onViewHistorial,
+  currentFilter,
+  onFilterChange,
 }: CitasManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCita, setEditingCita] = useState<Cita | null>(null);
@@ -176,13 +180,26 @@ export function CitasManager({
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Gestión de Citas - {selectedCenter}
             </CardTitle>
-            <Button
-              onClick={() => handleOpenDialog()}
-              className="bg-green-500 hover:bg-green-600 text-white"
-            >
-              <Plus className="size-4 mr-2" />
-              Nueva Cita
-            </Button>
+            <div className="flex items-center gap-3">
+              <select
+                value={(currentFilter || selectedCenter).toUpperCase()}
+                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
+                className="border rounded px-3 py-2 text-sm"
+                aria-label="Filtro sede citas"
+              >
+                <option value={"TODOS"}>Todos</option>
+                <option value={"NORTE"}>Norte</option>
+                <option value={"CENTRO"}>Centro</option>
+                <option value={"SUR"}>Sur</option>
+              </select>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-green-500 hover:bg-green-600 text-white"
+              >
+                <Plus className="size-4 mr-2" />
+                Nueva Cita
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

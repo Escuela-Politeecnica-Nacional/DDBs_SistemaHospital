@@ -17,14 +17,17 @@ interface Paciente {
   email: string;
   direccion: string;
   centroMedico: string;
+  genero: string;
 }
 
 interface PacientesManagerProps {
   selectedCenter: string;
   pacientes: Paciente[];
-  onAddPaciente: (paciente: Omit<Paciente, "id">) => void;
-  onEditPaciente: (id: string, paciente: Omit<Paciente, "id">) => void;
+  onAddPaciente: (paciente: Omit<Paciente, "id">) => void | Promise<void>;
+  onEditPaciente: (id: string, paciente: Omit<Paciente, "id">) => void | Promise<void>;
   onDeletePaciente: (id: string) => void;
+  currentFilter?: string;
+  onFilterChange?: (filter: string) => void;
 }
 
 export function PacientesManager({
@@ -33,11 +36,14 @@ export function PacientesManager({
   onAddPaciente,
   onEditPaciente,
   onDeletePaciente,
+  currentFilter,
+  onFilterChange,
 }: PacientesManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPaciente, setEditingPaciente] = useState<Paciente | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
+    id: "",
     nombre: "",
     apellido: "",
     cedula: "",
@@ -45,20 +51,28 @@ export function PacientesManager({
     telefono: "",
     email: "",
     direccion: "",
+    genero: "",
+    centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
   });
 
-  const filteredPacientes = pacientes.filter(
-    (p) =>
-      p.centroMedico === selectedCenter &&
-      (p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.cedula.includes(searchTerm))
+  const filteredPacientes = pacientes.filter((p) =>
+    (p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.cedula.includes(searchTerm))
   );
 
   const handleOpenDialog = (paciente?: Paciente) => {
     if (paciente) {
       setEditingPaciente(paciente);
+      // Asegurar que centroMedico sea código numérico en string
+      const centroStr = paciente.centroMedico !== undefined && paciente.centroMedico !== null
+        ? (isNaN(Number(paciente.centroMedico))
+            ? (paciente.centroMedico.toString().toUpperCase() === 'CENTRO' ? '1' : paciente.centroMedico.toString().toUpperCase() === 'SUR' ? '2' : '0')
+            : String(Number(paciente.centroMedico)))
+        : (selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0');
+
       setFormData({
+        id: paciente.id || "",
         nombre: paciente.nombre,
         apellido: paciente.apellido,
         cedula: paciente.cedula,
@@ -66,10 +80,13 @@ export function PacientesManager({
         telefono: paciente.telefono,
         email: paciente.email,
         direccion: paciente.direccion,
+        genero: paciente.genero || "",
+        centroMedico: centroStr,
       });
     } else {
       setEditingPaciente(null);
       setFormData({
+        id: "",
         nombre: "",
         apellido: "",
         cedula: "",
@@ -77,6 +94,8 @@ export function PacientesManager({
         telefono: "",
         email: "",
         direccion: "",
+        genero: "",
+        centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
       });
     }
     setIsDialogOpen(true);
@@ -88,7 +107,7 @@ export function PacientesManager({
   };
 
   const handleSubmit = () => {
-    const pacienteData = { ...formData, centroMedico: selectedCenter };
+    const pacienteData = { ...formData };
     if (editingPaciente) {
       onEditPaciente(editingPaciente.id, pacienteData);
     } else {
@@ -96,6 +115,8 @@ export function PacientesManager({
     }
     handleCloseDialog();
   };
+
+  const localFilter = (currentFilter || selectedCenter).toUpperCase();
 
   return (
     <div className="space-y-6">
@@ -105,13 +126,26 @@ export function PacientesManager({
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Gestión de Pacientes - {selectedCenter}
             </CardTitle>
-            <Button
-              onClick={() => handleOpenDialog()}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              <Plus className="size-4 mr-2" />
-              Nuevo Paciente
-            </Button>
+            <div className="flex items-center gap-3">
+              <select
+                value={localFilter}
+                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
+                className="border rounded px-3 py-2 text-sm"
+                aria-label="Filtro sede"
+              >
+                <option value={"TODOS"}>Todos</option>
+                <option value={"NORTE"}>Norte</option>
+                <option value={"CENTRO"}>Centro</option>
+                <option value={"SUR"}>Sur</option>
+              </select>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <Plus className="size-4 mr-2" />
+                Nuevo Paciente
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -193,6 +227,43 @@ export function PacientesManager({
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="id">ID Paciente</Label>
+                          <Input
+                            id="id"
+                            value={formData.id}
+                            onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="genero">Género</Label>
+                          <select
+                            id="genero"
+                            value={formData.genero}
+                            onChange={(e) => setFormData({ ...formData, genero: e.target.value })}
+                            className="w-full border rounded px-3 py-2"
+                            required
+                          >
+                            <option value="">Selecciona género</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="centroMedico">Centro Médico</Label>
+                          <select
+                            id="centroMedico"
+                            value={formData.centroMedico}
+                            onChange={(e) => setFormData({ ...formData, centroMedico: e.target.value })}
+                            className="w-full border rounded px-3 py-2"
+                            required
+                          >
+                            <option value="">Selecciona centro</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                          </select>
+                        </div>
             <div className="space-y-2">
               <Label htmlFor="nombre">Nombre</Label>
               <Input
