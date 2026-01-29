@@ -12,3 +12,10 @@ Aplicativo simulando un sistema hospitalario conteniendo 3 sedes en distintos lu
 
   Run `npm run dev` to start the development server.
   
+  Path: ../DDBs_SistemaHospital
+    -> npm i 
+    -> npm run dev
+  Path: ../DDBs_SistemaHospital/backend
+    -> node app.js
+
+  npm install jsonwebtoken
