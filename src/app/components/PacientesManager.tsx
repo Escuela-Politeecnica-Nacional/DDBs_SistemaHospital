@@ -59,28 +59,7 @@ export function PacientesManager({
   const handleOpenDialog = async (paciente?: Paciente) => {
     if (paciente) {
       setEditingPaciente(paciente);
-      // try to fetch full paciente details from API using id
-      try {
-        const sede = selectedCenter.toLowerCase();
-        if (paciente.id) {
-          const res = await fetch(`http://localhost:4000/api/pacientes/${paciente.id}?sede=${sede}`);
-          if (res.ok) {
-            const full = await res.json();
-            // normalize fields from backend
-            paciente = {
-              id: full.id_paciente?.toString() || full.id?.toString() || paciente.id,
-              cedula: full.cedula || paciente.cedula,
-              nombre: full.nombre || paciente.nombre,
-              apellido: full.apellido || paciente.apellido,
-              fechaNacimiento: full.fecha_nacimiento || paciente.fechaNacimiento,
-              genero: full.genero || paciente.genero,
-              centroMedico: full.centro_medico || paciente.centroMedico,
-            } as Paciente;
-          }
-        }
-      } catch (e) {
-        console.warn('No se pudo obtener paciente completo, usando datos de la lista', e);
-      }
+
       // Asegurar que centroMedico sea código numérico en string
       const centroStr = paciente.centroMedico !== undefined && paciente.centroMedico !== null
         ? (isNaN(Number(paciente.centroMedico))
@@ -88,16 +67,14 @@ export function PacientesManager({
             : String(Number(paciente.centroMedico)))
         : (selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0');
 
+      // Prefill inmediato usando el objeto de la lista para evitar campos vacíos
       const idVal = paciente.id ? paciente.id.toString() : "";
       let fechaVal = "";
       if (paciente.fechaNacimiento) {
         try {
           const d = new Date(paciente.fechaNacimiento);
-          if (!isNaN(d.getTime())) {
-            fechaVal = d.toISOString().split('T')[0];
-          } else if (typeof paciente.fechaNacimiento === 'string') {
-            fechaVal = paciente.fechaNacimiento.split('T')[0] || paciente.fechaNacimiento;
-          }
+          if (!isNaN(d.getTime())) fechaVal = d.toISOString().split('T')[0];
+          else if (typeof paciente.fechaNacimiento === 'string') fechaVal = paciente.fechaNacimiento.split('T')[0] || paciente.fechaNacimiento;
         } catch (e) {
           fechaVal = paciente.fechaNacimiento as unknown as string;
         }
@@ -112,6 +89,31 @@ export function PacientesManager({
         genero: paciente.genero || "",
         centroMedico: centroStr,
       });
+
+      // Luego intentar obtener datos completos del backend y actualizar el formulario
+      try {
+        const sede = selectedCenter.toLowerCase();
+        if (paciente.id) {
+          const res = await fetch(`http://localhost:4000/api/pacientes/${paciente.id}?sede=${sede}`);
+          if (res.ok) {
+            const full = await res.json();
+            const idFull = full.id_paciente?.toString() || full.id?.toString() || idVal;
+            let fechaFull = fechaVal;
+            if (full.fecha_nacimiento) {
+              try {
+                const d2 = new Date(full.fecha_nacimiento);
+                if (!isNaN(d2.getTime())) fechaFull = d2.toISOString().split('T')[0];
+                else if (typeof full.fecha_nacimiento === 'string') fechaFull = full.fecha_nacimiento.split('T')[0] || full.fecha_nacimiento;
+              } catch (e) {
+                fechaFull = full.fecha_nacimiento;
+              }
+            }
+            setFormData(prev => ({ ...prev, id: idFull, nombre: full.nombre || prev.nombre, apellido: full.apellido || prev.apellido, cedula: full.cedula || prev.cedula, fechaNacimiento: fechaFull, genero: full.genero || prev.genero, centroMedico: (full.centro_medico !== undefined ? String(full.centro_medico) : prev.centroMedico) }));
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudo obtener paciente completo, usando datos de la lista', e);
+      }
     } else {
       setEditingPaciente(null);
       setFormData({
