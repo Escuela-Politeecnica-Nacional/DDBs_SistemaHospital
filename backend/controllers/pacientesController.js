@@ -125,6 +125,27 @@ async function editPaciente(req, res) {
   }
 }
 
+// Obtener paciente por id
+async function getPacienteById(req, res) {
+  const sede = req.query.sede || 'centro';
+  const { id } = req.params;
+  try {
+    const pool = await getConnection(sede);
+    const result = await pool.request()
+      .input('id_paciente', sql.Int, Number(id))
+      .input('centroVal', sql.Int, sedeToCentroId(sede))
+      .query(queries[sede].getPacienteById);
+    if (!result.recordset || result.recordset.length === 0) {
+      res.status(404).json({ error: 'Paciente no encontrado' });
+      return;
+    }
+    res.json(result.recordset[0]);
+  } catch (err) {
+    console.error('getPacienteById error:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
 // Eliminar paciente
 async function deletePaciente(req, res) {
   const sede = req.query.sede || 'centro';
@@ -145,5 +166,6 @@ module.exports = {
   getPacientes,
   addPaciente,
   editPaciente,
+  getPacienteById,
   deletePaciente,
 };

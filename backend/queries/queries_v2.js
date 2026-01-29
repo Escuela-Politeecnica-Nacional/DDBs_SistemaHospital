@@ -22,7 +22,7 @@ const queries = {};
 
     // QUERY: get pacientes
     q.getPacientes = `
-    SELECT pi.cedula, pd.nombre, pd.apellido, pd.fecha_nacimiento, pd.genero
+    SELECT pi.id_paciente, pi.cedula, pd.nombre, pd.apellido, pd.fecha_nacimiento, pd.genero, pd.centro_medico
     FROM dbo.${table('paciente_detalle', sede)} pd
     JOIN dbo.paciente_info pi ON pd.id_paciente = pi.id_paciente
     WHERE pd.centro_medico = @centroVal

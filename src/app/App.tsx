@@ -168,13 +168,10 @@ export default function App() {
       const data = await res.json();
       const pacientesAdaptados = data.map((p: any) => ({
         id: p.id_paciente?.toString() || p.id?.toString() || '',
+        cedula: p.cedula || '',
         nombre: p.nombre || '',
         apellido: p.apellido || '',
-        cedula: p.cedula || '',
         fechaNacimiento: p.fecha_nacimiento || '',
-        telefono: p.telefono || '',
-        email: p.email || '',
-        direccion: p.direccion || '',
         genero: p.genero || '',
         centroMedico: p.centro_medico || p.info_centro_medico || p.detalle_centro_medico || selectedCenter,
       }));
@@ -212,9 +209,6 @@ export default function App() {
             apellido: paciente.apellido,
             fechaNacimiento: paciente.fechaNacimiento,
             genero: paciente.genero,
-            telefono: paciente.telefono,
-            email: paciente.email,
-            direccion: paciente.direccion,
           })
         });
       fetchPacientes();
@@ -240,9 +234,6 @@ export default function App() {
             apellido: paciente.apellido,
             fechaNacimiento: paciente.fechaNacimiento,
             genero: paciente.genero,
-            telefono: paciente.telefono,
-            email: paciente.email,
-            direccion: paciente.direccion,
           })
         });
       fetchPacientes();
