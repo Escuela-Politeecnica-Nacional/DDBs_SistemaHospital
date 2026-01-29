@@ -32,6 +32,8 @@ interface DoctoresManagerProps {
   onAddDoctor: (doctor: Omit<Doctor, "id">) => void;
   onEditDoctor: (id: string, doctor: Omit<Doctor, "id">) => void;
   onDeleteDoctor: (id: string) => void;
+  currentFilter?: string;
+  onFilterChange?: (filter: string) => void;
 }
 
 export function DoctoresManager({
@@ -41,6 +43,8 @@ export function DoctoresManager({
   onAddDoctor,
   onEditDoctor,
   onDeleteDoctor,
+  currentFilter,
+  onFilterChange,
 }: DoctoresManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
@@ -54,12 +58,10 @@ export function DoctoresManager({
     email: "",
   });
 
-  const filteredDoctores = doctores.filter(
-    (d) =>
-      d.centroMedico === selectedCenter &&
-      (d.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.cedula.includes(searchTerm))
+  const filteredDoctores = doctores.filter((d) =>
+    (d.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.cedula.includes(searchTerm))
   );
 
   const getEspecialidadNombre = (especialidadId: string) => {
@@ -114,13 +116,26 @@ export function DoctoresManager({
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Gestión de Doctores - {selectedCenter}
             </CardTitle>
-            <Button
-              onClick={() => handleOpenDialog()}
-              className="bg-green-500 hover:bg-green-600 text-white"
-            >
-              <Plus className="size-4 mr-2" />
-              Nuevo Doctor
-            </Button>
+            <div className="flex items-center gap-3">
+              <select
+                value={(currentFilter || selectedCenter).toUpperCase()}
+                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
+                className="border rounded px-3 py-2 text-sm"
+                aria-label="Filtro sede doctores"
+              >
+                <option value={"TODOS"}>Todos</option>
+                <option value={"NORTE"}>Norte</option>
+                <option value={"CENTRO"}>Centro</option>
+                <option value={"SUR"}>Sur</option>
+              </select>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-green-500 hover:bg-green-600 text-white"
+              >
+                <Plus className="size-4 mr-2" />
+                Nuevo Doctor
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

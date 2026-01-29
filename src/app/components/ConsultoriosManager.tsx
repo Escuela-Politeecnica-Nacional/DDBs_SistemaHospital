@@ -22,6 +22,8 @@ interface ConsultoriosManagerProps {
   onAddConsultorio: (consultorio: Omit<Consultorio, "id">) => void;
   onEditConsultorio: (id: string, consultorio: Omit<Consultorio, "id">) => void;
   onDeleteConsultorio: (id: string) => void;
+  currentFilter?: string;
+  onFilterChange?: (filter: string) => void;
 }
 
 export function ConsultoriosManager({
@@ -30,6 +32,8 @@ export function ConsultoriosManager({
   onAddConsultorio,
   onEditConsultorio,
   onDeleteConsultorio,
+  currentFilter,
+  onFilterChange,
 }: ConsultoriosManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingConsultorio, setEditingConsultorio] = useState<Consultorio | null>(null);
@@ -40,11 +44,9 @@ export function ConsultoriosManager({
     disponible: true,
   });
 
-  const filteredConsultorios = consultorios.filter(
-    (c) =>
-      c.centroMedico === selectedCenter &&
-      (c.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.piso.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredConsultorios = consultorios.filter((c) =>
+    (c.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.piso.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleOpenDialog = (consultorio?: Consultorio) => {
@@ -89,13 +91,26 @@ export function ConsultoriosManager({
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Gestión de Consultorios - {selectedCenter}
             </CardTitle>
-            <Button
-              onClick={() => handleOpenDialog()}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              <Plus className="size-4 mr-2" />
-              Nuevo Consultorio
-            </Button>
+            <div className="flex items-center gap-3">
+              <select
+                value={(currentFilter || selectedCenter).toUpperCase()}
+                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
+                className="border rounded px-3 py-2 text-sm"
+                aria-label="Filtro sede consultorios"
+              >
+                <option value={"TODOS"}>Todos</option>
+                <option value={"NORTE"}>Norte</option>
+                <option value={"CENTRO"}>Centro</option>
+                <option value={"SUR"}>Sur</option>
+              </select>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <Plus className="size-4 mr-2" />
+                Nuevo Consultorio
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

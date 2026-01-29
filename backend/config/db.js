@@ -1,6 +1,10 @@
+const path = require('path');
 const dotenv = require('dotenv');
-dotenv.config();
+// Load backend/.env explicitly so running node from project root still finds the file
+const envPath = path.join(__dirname, '..', '.env');
+dotenv.config({ path: envPath });
 const sql = require('mssql');
+console.log(`env loaded from ${envPath} DB_HOST_CENTRO=${process.env.DB_HOST_CENTRO}`);
 
 const dbConfigs = {
   centro: {
@@ -8,6 +12,7 @@ const dbConfigs = {
     password: process.env.DB_PASS_CENTRO,
     server: process.env.DB_HOST_CENTRO,
     database: process.env.DB_NAME_CENTRO,
+    
     options: {
       encrypt: false, // Cambia a true si usas Azure
       trustServerCertificate: true
@@ -37,7 +42,10 @@ const dbConfigs = {
 
 async function getConnection(sede = 'centro') {
   try {
-    const pool = await sql.connect(dbConfigs[sede]);
+    const cfg = dbConfigs[sede];
+    if (!cfg) throw new Error(`Unknown sede '${sede}'`);
+    console.log(`getConnection: connecting to sede='${sede}' server='${cfg.server}' database='${cfg.database}'`);
+    const pool = await sql.connect(cfg);
     return pool;
   } catch (err) {
     throw err;

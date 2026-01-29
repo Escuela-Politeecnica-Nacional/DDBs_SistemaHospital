@@ -1,13 +1,44 @@
 const { getConnection, sql } = require('../config/db');
+const queries = require('../queries/queries_v2');
+
+function sedeToCentroId(sede) {
+  if (!sede) return 1;
+  const s = sede.toLowerCase();
+  if (s === 'centro') return 1;
+  if (s === 'sur') return 2;
+  return 0;
+}
 
 // Obtener todos los doctores de una sede
 async function getDoctores(req, res) {
   const sede = req.query.sede || 'centro';
+  const filterRaw = (req.query.filter || sede).toString().toLowerCase();
+  const seats = ['norte', 'centro', 'sur'];
   try {
-    const pool = await getConnection(sede);
-    const result = await pool.request().query('SELECT * FROM doctor_CENTRO');
-    res.json(result.recordset);
+    if (filterRaw === 'todos' || filterRaw === 'all') {
+      const promises = seats.map(async (s) => {
+        const pool = await getConnection(s);
+        const sqlText = queries[s].getDoctores;
+        const result = await pool.request()
+          .input('centroVal', sql.Int, sedeToCentroId(s))
+          .query(sqlText);
+        console.log(`getDoctores: fetched ${result.recordset.length} rows (sede=${s})`);
+        return result.recordset.map(r => ({ ...r, _sede: s }));
+      });
+      const parts = await Promise.all(promises);
+      res.json(parts.flat());
+      return;
+    }
+    const target = seats.includes(filterRaw) ? filterRaw : sede;
+    const pool = await getConnection(target);
+    const sqlText = queries[target].getDoctores;
+    const result = await pool.request()
+      .input('centroVal', sql.Int, sedeToCentroId(target))
+      .query(sqlText);
+    console.log(`getDoctores: fetched ${result.recordset.length} rows (target=${target}, requestedBy=${sede})`);
+    res.json(result.recordset.map(r => ({ ...r, _sede: target })));
   } catch (err) {
+    console.error('getDoctores error:', err);
     res.status(500).json({ error: err.message });
   }
 }
@@ -15,16 +46,27 @@ async function getDoctores(req, res) {
 // Agregar doctor
 async function addDoctor(req, res) {
   const sede = req.query.sede || 'centro';
+  const centroVal = sedeToCentroId(sede);
   const { nombre, apellido, id_especialidad } = req.body;
   try {
     const pool = await getConnection(sede);
-    const result = await pool.request()
-      .input('nombre', nombre)
-      .input('apellido', apellido)
-      .input('id_especialidad', id_especialidad)
-      .query('INSERT INTO doctor_CENTRO (nombre, apellido, id_especialidad, centro_medico) OUTPUT INSERTED.* VALUES (@nombre, @apellido, @id_especialidad, 1)');
-    res.status(201).json(result.recordset[0]);
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const result = await new sql.Request(transaction)
+        .input('nombre', sql.VarChar(100), nombre)
+        .input('apellido', sql.VarChar(100), apellido)
+        .input('id_especialidad', sql.Int, id_especialidad)
+        .input('centro_medico', sql.Int, centroVal)
+        .query(queries[sede].insertDoctor);
+      await transaction.commit();
+      res.status(201).json(result.recordset[0]);
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
   } catch (err) {
+    console.error('addDoctor error:', err);
     res.status(500).json({ error: err.message });
   }
 }
@@ -32,18 +74,23 @@ async function addDoctor(req, res) {
 // Editar doctor
 async function editDoctor(req, res) {
   const sede = req.query.sede || 'centro';
+  const centroVal = sedeToCentroId(sede);
   const { id } = req.params;
   const { nombre, apellido, id_especialidad } = req.body;
   try {
     const pool = await getConnection(sede);
+    const suf = sede.toUpperCase() === 'CENTRO' ? 'CENTRO' : (sede.toLowerCase() === 'sur' ? 'SUR' : 'NORTE');
+    const tableName = `dbo.doctor_${suf}`;
     await pool.request()
-      .input('id_doctor', id)
-      .input('nombre', nombre)
-      .input('apellido', apellido)
-      .input('id_especialidad', id_especialidad)
-      .query('UPDATE doctor_CENTRO SET nombre=@nombre, apellido=@apellido, id_especialidad=@id_especialidad WHERE id_doctor=@id_doctor');
+      .input('id_doctor', sql.Int, id)
+      .input('nombre', sql.VarChar(100), nombre)
+      .input('apellido', sql.VarChar(100), apellido)
+      .input('id_especialidad', sql.Int, id_especialidad)
+      .input('centroVal', sql.Int, centroVal)
+      .query(`UPDATE ${tableName} SET nombre=@nombre, apellido=@apellido, id_especialidad=@id_especialidad WHERE id_doctor=@id_doctor AND centro_medico=@centroVal`);
     res.json({ message: 'Doctor actualizado' });
   } catch (err) {
+    console.error('editDoctor error:', err);
     res.status(500).json({ error: err.message });
   }
 }
@@ -51,14 +98,19 @@ async function editDoctor(req, res) {
 // Eliminar doctor
 async function deleteDoctor(req, res) {
   const sede = req.query.sede || 'centro';
+  const centroVal = sedeToCentroId(sede);
   const { id } = req.params;
   try {
     const pool = await getConnection(sede);
+    const suf = sede.toUpperCase() === 'CENTRO' ? 'CENTRO' : (sede.toLowerCase() === 'sur' ? 'SUR' : 'NORTE');
+    const tableName = `dbo.doctor_${suf}`;
     await pool.request()
-      .input('id_doctor', id)
-      .query('DELETE FROM doctor_CENTRO WHERE id_doctor=@id_doctor');
+      .input('id_doctor', sql.Int, id)
+      .input('centroVal', sql.Int, centroVal)
+      .query(`DELETE FROM ${tableName} WHERE id_doctor=@id_doctor AND centro_medico=@centroVal`);
     res.json({ message: 'Doctor eliminado' });
   } catch (err) {
+    console.error('deleteDoctor error:', err);
     res.status(500).json({ error: err.message });
   }
 }
