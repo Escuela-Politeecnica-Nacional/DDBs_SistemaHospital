@@ -72,6 +72,23 @@ interface Historial {
 }
 
 export default function App() {
+  // Helper: normalize centro_medico value to uppercase label used in UI
+  const centroLabel = (val: any) => {
+    if (val === null || val === undefined) return '';
+    const s = String(val).toLowerCase();
+    if (s === '1' || s === 'centro' || s === 'centro_medico' || s === 'central') return 'CENTRO';
+    if (s === '2' || s === 'sur') return 'SUR';
+    if (s === '0' || s === 'norte') return 'NORTE';
+    // try numeric
+    if (!isNaN(Number(s))) {
+      const n = Number(s);
+      if (n === 1) return 'CENTRO';
+      if (n === 2) return 'SUR';
+      if (n === 0) return 'NORTE';
+    }
+    return String(val).toUpperCase();
+  };
+
   const [selectedCenter, setSelectedCenter] = useState<string>(localStorage.getItem('sede') || "");
   const [currentView, setCurrentView] = useState<Vista>("dashboard");
   const [selectedCitaId, setSelectedCitaId] = useState<string>("");
@@ -124,7 +141,7 @@ export default function App() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre: especialidad.nombre })
+          body: JSON.stringify({ id_especialidad: (especialidad as any).id || undefined, nombre: especialidad.nombre })
         });
       fetchEspecialidades();
     } catch (error) {}
@@ -173,7 +190,7 @@ export default function App() {
         apellido: p.apellido || '',
         fechaNacimiento: p.fecha_nacimiento || '',
         genero: p.genero || '',
-        centroMedico: p.centro_medico || p.info_centro_medico || p.detalle_centro_medico || selectedCenter,
+        centroMedico: centroLabel(p.centro_medico || p.info_centro_medico || p.detalle_centro_medico || selectedCenter),
       }));
       setPacientes(pacientesAdaptados);
     } catch (error) {
@@ -265,11 +282,8 @@ export default function App() {
         id: d.id_doctor?.toString() || d.id?.toString() || '',
         nombre: d.nombre || '',
         apellido: d.apellido || '',
-        cedula: '', // Ajustar si se agrega en backend
         especialidadId: d.id_especialidad?.toString() || '',
-        telefono: '', // Ajustar si se agrega en backend
-        email: '', // Ajustar si se agrega en backend
-        centroMedico: selectedCenter,
+        centroMedico: centroLabel(d.centro_medico?.toString() || selectedCenter),
       }));
       setDoctores(doctoresAdaptados);
     } catch (error) {
@@ -296,6 +310,7 @@ export default function App() {
             nombre: doctor.nombre,
             apellido: doctor.apellido,
             id_especialidad: doctor.especialidadId,
+            centro_medico: Number(doctor.centroMedico) || (sede === 'centro' ? 1 : sede === 'sur' ? 2 : 0),
           })
         });
       fetchDoctores();
@@ -316,6 +331,7 @@ export default function App() {
             nombre: doctor.nombre,
             apellido: doctor.apellido,
             id_especialidad: doctor.especialidadId,
+            centro_medico: Number(doctor.centroMedico) || (sede === 'centro' ? 1 : sede === 'sur' ? 2 : 0),
           })
         });
       fetchDoctores();
@@ -813,7 +829,7 @@ export default function App() {
         )}
 
         {currentView === "especialidades" && (
-          <EspecialidadesManager especialidades={especialidades} />
+          <EspecialidadesManager especialidades={especialidades} onAdd={handleAddEspecialidad} onDelete={handleDeleteEspecialidad} />
         )}
 
         {currentView === "centros" && (

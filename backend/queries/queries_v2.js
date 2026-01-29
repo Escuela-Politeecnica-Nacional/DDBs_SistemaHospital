@@ -78,7 +78,9 @@ const queries = {};
 
     // QUERY: especialidades (shared table, no suffix)
     q.getEspecialidades = `SELECT * FROM dbo.especialidad`;
-    q.insertEspecialidad = `INSERT INTO dbo.especialidad (nombre) OUTPUT INSERTED.* VALUES (@nombre)`;
+    // Some deployments require providing id_especialidad manually (no IDENTITY).
+    // Insert accepts id_especialidad when provided, otherwise controller will compute one.
+    q.insertEspecialidad = `INSERT INTO dbo.especialidad (id_especialidad, nombre) OUTPUT INSERTED.* VALUES (@id_especialidad, @nombre)`;
 
     // QUERY: centros (shared table, filter by sede column)
     q.getCentros = `SELECT id_centro_medico, nombre, direccion, telefono, email, sede FROM dbo.centros_medicos`;

@@ -13,10 +13,7 @@ interface Doctor {
   id: string;
   nombre: string;
   apellido: string;
-  cedula: string;
   especialidadId: string;
-  telefono: string;
-  email: string;
   centroMedico: string;
 }
 
@@ -52,16 +49,14 @@ export function DoctoresManager({
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
-    cedula: "",
     especialidadId: "",
-    telefono: "",
-    email: "",
+    centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
   });
 
   const filteredDoctores = doctores.filter((d) =>
     (d.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       d.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.cedula.includes(searchTerm))
+      d.id.includes(searchTerm))
   );
 
   const getEspecialidadNombre = (especialidadId: string) => {
@@ -74,20 +69,16 @@ export function DoctoresManager({
       setFormData({
         nombre: doctor.nombre,
         apellido: doctor.apellido,
-        cedula: doctor.cedula,
         especialidadId: doctor.especialidadId,
-        telefono: doctor.telefono,
-        email: doctor.email,
+        centroMedico: doctor.centroMedico || (selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0'),
       });
     } else {
       setEditingDoctor(null);
       setFormData({
         nombre: "",
         apellido: "",
-        cedula: "",
         especialidadId: "",
-        telefono: "",
-        email: "",
+        centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
       });
     }
     setIsDialogOpen(true);
@@ -155,12 +146,11 @@ export function DoctoresManager({
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead>Cédula</TableHead>
+                  <TableHead>ID</TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Apellido</TableHead>
-                  <TableHead>Especialidad</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Especialidad (ID)</TableHead>
+                  <TableHead>Centro Médico</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -174,16 +164,15 @@ export function DoctoresManager({
                 ) : (
                   filteredDoctores.map((doctor) => (
                     <TableRow key={doctor.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">{doctor.cedula}</TableCell>
+                      <TableCell className="font-medium">{doctor.id}</TableCell>
                       <TableCell>{doctor.nombre}</TableCell>
                       <TableCell>{doctor.apellido}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="bg-green-100 text-green-700">
-                          {getEspecialidadNombre(doctor.especialidadId)}
+                          {doctor.especialidadId}
                         </Badge>
                       </TableCell>
-                      <TableCell>{doctor.telefono}</TableCell>
-                      <TableCell>{doctor.email}</TableCell>
+                      <TableCell>{doctor.centroMedico}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -237,14 +226,7 @@ export function DoctoresManager({
                 onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cedula">Cédula</Label>
-              <Input
-                id="cedula"
-                value={formData.cedula}
-                onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
-              />
-            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="especialidad">Especialidad</Label>
               <Select
@@ -266,21 +248,18 @@ export function DoctoresManager({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="telefono">Teléfono</Label>
-              <Input
-                id="telefono"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+              <Label htmlFor="centroMedico">Centro Médico</Label>
+              <select
+                id="centroMedico"
+                value={formData.centroMedico}
+                onChange={(e) => setFormData({ ...formData, centroMedico: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+                required
+              >
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+              </select>
             </div>
           </div>
           <DialogFooter>

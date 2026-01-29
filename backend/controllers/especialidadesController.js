@@ -20,16 +20,28 @@ async function addEspecialidad(req, res) {
   const sede = req.query.sede || 'centro';
   const { nombre } = req.body;
   try {
+    console.log(`addEspecialidad: incoming request (sede=${sede}) body=`, req.body);
     const pool = await getConnection(sede);
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      console.log('addEspecialidad: executing INSERT Especialidad with nombre=', nombre);
+      // determine id_especialidad: use provided id or compute next available
+      let id_especialidad = req.body.id_especialidad || req.body.id || null;
+      if (!id_especialidad) {
+        const r = await new sql.Request(transaction).query('SELECT ISNULL(MAX(id_especialidad),0)+1 AS nextId FROM dbo.especialidad');
+        id_especialidad = r.recordset && r.recordset[0] && r.recordset[0].nextId ? r.recordset[0].nextId : 1;
+        console.log('addEspecialidad: computed id_especialidad=', id_especialidad);
+      }
       const result = await new sql.Request(transaction)
+        .input('id_especialidad', sql.Int, id_especialidad)
         .input('nombre', sql.VarChar(200), nombre)
         .query(queries[sede].insertEspecialidad);
+      console.log('addEspecialidad: INSERT result=', result.recordset && result.recordset[0]);
       await transaction.commit();
       res.status(201).json(result.recordset[0]);
     } catch (err) {
+      console.error('addEspecialidad: error during INSERT, rolling back', err);
       await transaction.rollback();
       throw err;
     }
