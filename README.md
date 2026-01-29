@@ -12,3 +12,4 @@ Aplicativo simulando un sistema hospitalario conteniendo 3 sedes en distintos lu
 
   Run `npm run dev` to start the development server.
   
+  /backend -> npm install jsonwebtoken
