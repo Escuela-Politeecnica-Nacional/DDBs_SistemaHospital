@@ -11,8 +11,11 @@ const SUFFIX = {
 };
 
 function table(tableBase, sede) {
-    const suffix = SUFFIX[sede] || SUFFIX.centro;
-    return `${tableBase}_${suffix}`;
+  const suffix = SUFFIX[sede] || SUFFIX.centro;
+  // Older/non-central DBs use base table names without suffix.
+  // Keep the _CENTRO suffix only when targeting the 'centro' DB.
+  if (sede === 'centro') return `${tableBase}_${suffix}`;
+  return `${tableBase}`;
 }
 
 const queries = {};

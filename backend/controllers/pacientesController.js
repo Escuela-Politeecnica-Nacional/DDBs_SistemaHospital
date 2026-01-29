@@ -17,15 +17,20 @@ async function getPacientes(req, res) {
   const seats = ['norte', 'centro', 'sur'];
   try {
     if (filterRaw === 'todos' || filterRaw === 'all') {
-      // Query all seats and combine
+      // Query all seats and combine, tolerate failures per node
       const promises = seats.map(async (s) => {
-        const pool = await getConnection(s);
-        const sqlText = queries[s].getPacientes;
-        const result = await pool.request()
-          .input('centroVal', sql.Int, sedeToCentroId(s))
-          .query(sqlText);
-        console.log(`getPacientes: fetched ${result.recordset.length} rows from DB (sede=${s})`);
-        return result.recordset.map(r => ({ ...r, _sede: s }));
+        try {
+          const pool = await getConnection(s);
+          const sqlText = queries[s].getPacientes;
+          const result = await pool.request()
+            .input('centroVal', sql.Int, sedeToCentroId(s))
+            .query(sqlText);
+          console.log(`getPacientes: fetched ${result.recordset.length} rows from DB (sede=${s})`);
+          return result.recordset.map(r => ({ ...r, _sede: s }));
+        } catch (errSeat) {
+          console.error(`getPacientes: error fetching from sede='${s}':`, errSeat && errSeat.message ? errSeat.message : errSeat);
+          return [];
+        }
       });
       const parts = await Promise.all(promises);
       const combined = parts.flat();
@@ -34,13 +39,78 @@ async function getPacientes(req, res) {
     }
 
     const target = seats.includes(filterRaw) ? filterRaw : sede;
-    const pool = await getConnection(target);
-    const sqlText = queries[target].getPacientes;
-    const result = await pool.request()
-      .input('centroVal', sql.Int, sedeToCentroId(target))
-      .query(sqlText);
-    console.log(`getPacientes: fetched ${result.recordset.length} rows from DB (target=${target}, requestedBy=${sede})`);
-    res.json(result.recordset.map(r => ({ ...r, _sede: target })));
+    console.log(`getPacientes: requestedBy=${sede} filter=${filterRaw} -> target=${target}`);
+    let pool;
+    try {
+      pool = await getConnection(target);
+    } catch (connErr) {
+      console.error(`getPacientes: failed to connect to target='${target}':`, connErr && connErr.message ? connErr.message : connErr);
+      return res.status(502).json({ error: `DB connection failed for target '${target}': ${connErr.message || connErr}` });
+    }
+    const sqlText = queries[target] && queries[target].getPacientes ? queries[target].getPacientes : null;
+
+    // helper to execute a prepared query with centroVal
+    const tryQuery = async (pool, sqlString) => {
+      return await pool.request().input('centroVal', sql.Int, sedeToCentroId(target)).query(sqlString);
+    };
+
+    if (sqlText) {
+      try {
+        const result = await tryQuery(pool, sqlText);
+        console.log(`getPacientes: fetched ${result.recordset.length} rows from DB (target=${target}, requestedBy=${sede})`);
+        return res.json(result.recordset.map(r => ({ ...r, _sede: target })));
+      } catch (primaryErr) {
+        console.error(`getPacientes: primary query failed for target='${target}':`, primaryErr && primaryErr.message ? primaryErr.message : primaryErr);
+        // continue to fallbacks
+      }
+    }
+
+    // Build candidate detalle table names (suffixed and base)
+    const suffix = target.toUpperCase();
+    const candidates = [`dbo.paciente_detalle_${suffix}`, 'dbo.paciente_detalle'];
+
+    // First, try JOINing paciente_detalle with paciente_info for richer rows
+    for (const tbl of candidates) {
+      // If table is suffixed (per-sede physical table), don't force centro_medico filter
+      const isSuffixed = tbl.toUpperCase().includes(`_${suffix}`);
+      const whereClause = isSuffixed ? '' : 'WHERE pd.centro_medico = @centroVal';
+      const joinSql = `SELECT pi.id_paciente, pi.cedula, pd.nombre, pd.apellido, pd.fecha_nacimiento, pd.genero, pd.centro_medico FROM ${tbl} pd JOIN dbo.paciente_info pi ON pd.id_paciente = pi.id_paciente ${whereClause}`;
+      try {
+        const r = await tryQuery(pool, joinSql);
+        console.log(`getPacientes: fallback join succeeded using table ${tbl} (rows=${r.recordset.length})`);
+        return res.json(r.recordset.map(rr => ({ ...rr, _sede: target })));
+      } catch (joinErr) {
+        console.warn(`getPacientes: join with ${tbl} failed:`, joinErr && joinErr.message ? joinErr.message : joinErr);
+      }
+    }
+
+    // Next, try simple selects from detalle-only tables
+    for (const tbl of candidates) {
+      const isSuffixed = tbl.toUpperCase().includes(`_${suffix}`);
+      const whereClause = isSuffixed ? '' : 'WHERE centro_medico = @centroVal';
+      const simpleSql = `SELECT id_paciente, nombre, apellido, fecha_nacimiento, genero, centro_medico, cedula FROM ${tbl} ${whereClause}`;
+      try {
+        const r2 = await tryQuery(pool, simpleSql);
+        console.log(`getPacientes: fallback simple select succeeded using table ${tbl} (rows=${r2.recordset.length})`);
+        const mapped = r2.recordset.map(rr => ({ id_paciente: rr.id_paciente, cedula: rr.cedula || '', nombre: rr.nombre, apellido: rr.apellido, fecha_nacimiento: rr.fecha_nacimiento, genero: rr.genero, centro_medico: rr.centro_medico, _sede: target }));
+        return res.json(mapped);
+      } catch (simpleErr) {
+        console.warn(`getPacientes: simple select from ${tbl} failed:`, simpleErr && simpleErr.message ? simpleErr.message : simpleErr);
+      }
+    }
+
+    // Last-resort: return rows from paciente_info if available (basic id + cedula + centro)
+    try {
+      const infoSql = `SELECT id_paciente, cedula, centro_medico FROM dbo.paciente_info WHERE centro_medico = @centroVal`;
+      const ri = await tryQuery(pool, infoSql);
+      console.log(`getPacientes: paciente_info fallback returned ${ri.recordset.length} rows for target=${target}`);
+      const mappedInfo = ri.recordset.map(rr => ({ id_paciente: rr.id_paciente, cedula: rr.cedula || '', nombre: '', apellido: '', fecha_nacimiento: null, genero: '', centro_medico: rr.centro_medico, _sede: target }));
+      return res.json(mappedInfo);
+    } catch (infoErr) {
+      console.error(`getPacientes: paciente_info fallback failed for target='${target}':`, infoErr && infoErr.message ? infoErr.message : infoErr);
+    }
+
+    return res.status(500).json({ error: `No suitable paciente table/query found for target '${target}'` });
   } catch (err) {
     console.error('getPacientes error:', err);
     res.status(500).json({ error: err.message, stack: err.stack });
@@ -111,6 +181,7 @@ async function editPaciente(req, res) {
   const { nombre, apellido, fechaNacimiento, genero } = req.body;
   try {
     const pool = await getConnection(sede);
+    const detalleTable = sede === 'centro' ? 'paciente_detalle_CENTRO' : 'paciente_detalle';
     await pool.request()
       .input('id_paciente', id)
       .input('nombre', nombre)
@@ -118,7 +189,7 @@ async function editPaciente(req, res) {
       .input('fecha_nacimiento', fechaNacimiento)
       .input('genero', genero)
       .input('centroVal', sedeToCentroId(sede))
-      .query('UPDATE paciente_detalle_CENTRO SET nombre=@nombre, apellido=@apellido, fecha_nacimiento=@fecha_nacimiento, genero=@genero WHERE id_paciente=@id_paciente AND centro_medico=@centroVal');
+      .query(`UPDATE ${detalleTable} SET nombre=@nombre, apellido=@apellido, fecha_nacimiento=@fecha_nacimiento, genero=@genero WHERE id_paciente=@id_paciente AND centro_medico=@centroVal`);
     res.json({ message: 'Paciente actualizado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -152,10 +223,11 @@ async function deletePaciente(req, res) {
   const { id } = req.params;
   try {
     const pool = await getConnection(sede);
+    const detalleTable = sede === 'centro' ? 'paciente_detalle_CENTRO' : 'paciente_detalle';
     await pool.request()
       .input('id_paciente', id)
       .input('centroVal', sedeToCentroId(sede))
-      .query('DELETE FROM paciente_detalle_CENTRO WHERE id_paciente=@id_paciente AND centro_medico=@centroVal');
+      .query(`DELETE FROM ${detalleTable} WHERE id_paciente=@id_paciente AND centro_medico=@centroVal`);
     res.json({ message: 'Paciente eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
