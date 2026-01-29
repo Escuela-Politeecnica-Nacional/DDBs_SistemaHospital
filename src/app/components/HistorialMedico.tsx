@@ -15,12 +15,9 @@ interface Historial {
 interface Cita {
   id: string;
   pacienteId: string;
-  doctorId: string;
   consultorioId: string;
   fecha: string;
-  hora: string;
   motivo: string;
-  estado: string;
 }
 
 interface Paciente {
@@ -63,7 +60,6 @@ export function HistorialMedico({
   const cita = citas.find((c) => c.id === citaId);
   const historial = historiales.find((h) => h.citaId === citaId);
   const paciente = cita ? pacientes.find((p) => p.id === cita.pacienteId) : null;
-  const doctor = cita ? doctores.find((d) => d.id === cita.doctorId) : null;
   const consultorio = cita ? consultorios.find((c) => c.id === cita.consultorioId) : null;
 
   if (!cita) {
@@ -123,26 +119,12 @@ export function HistorialMedico({
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Stethoscope className="size-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Doctor</p>
-                <p className="font-medium text-gray-800">
-                  {doctor ? `Dr. ${doctor.nombre} ${doctor.apellido}` : "N/A"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Calendar className="size-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Fecha y Hora</p>
-                <p className="font-medium text-gray-800">
-                  {cita.fecha} - {cita.hora}
-                </p>
+                <p className="text-sm text-gray-500">Fecha</p>
+                <p className="font-medium text-gray-800">{cita.fecha}</p>
               </div>
             </div>
 

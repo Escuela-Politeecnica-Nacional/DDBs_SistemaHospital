@@ -53,12 +53,10 @@ interface Consultorio {
 interface Cita {
   id: string;
   pacienteId: string;
-  doctorId: string;
   consultorioId: string;
   fecha: string;
-  hora: string;
   motivo: string;
-  estado: "Programada" | "Completada" | "Cancelada";
+  centroMedico: string | number;
 }
 
 interface Historial {
@@ -188,7 +186,6 @@ export default function App() {
         nombre: p.nombre || '',
         apellido: p.apellido || '',
         fechaNacimiento: p.fecha_nacimiento || '',
-        genero: p.genero || '',
         centroMedico: centroLabel(p.centro_medico || p.info_centro_medico || p.detalle_centro_medico || selectedCenter),
       }));
       setPacientes(pacientesAdaptados);
@@ -298,7 +295,7 @@ export default function App() {
   /**
    * Agrega un doctor usando la API.
    */
-  const handleAddDoctor = async (doctor: Omit<Doctor, "id">) => {
+  const handleAddDoctor = async (doctor: Doctor) => {
     try {
       const sede = selectedCenter.toLowerCase();
       await fetch(`http://localhost:4000/api/doctores?sede=${sede}&filter=${doctoresFilter}`,
@@ -306,6 +303,7 @@ export default function App() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            id_doctor: (doctor as any).id || undefined,
             nombre: doctor.nombre,
             apellido: doctor.apellido,
             id_especialidad: doctor.especialidadId,
@@ -440,12 +438,10 @@ export default function App() {
       const citasAdaptadas = data.map((c: any) => ({
         id: c.id_cita?.toString() || c.id?.toString() || '',
         pacienteId: c.id_paciente?.toString() || '',
-        doctorId: '', // Ajustar si se agrega en backend
         consultorioId: c.id_consultorio?.toString() || '',
         fecha: c.fecha || '',
-        hora: '', // Ajustar si se agrega en backend
         motivo: c.motivo || '',
-        estado: 'Programada', // Ajustar si se agrega en backend
+        centroMedico: c.centro_medico ?? c.centroMedico ?? selectedCenter,
       }));
       setCitas(citasAdaptadas);
     } catch (error) {
@@ -469,10 +465,14 @@ export default function App() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            id_cita: (cita as any).id || undefined,
             id_consultorio: cita.consultorioId,
             id_paciente: cita.pacienteId,
             fecha: cita.fecha,
             motivo: cita.motivo,
+            centro_medico: (cita as any).centroMedico !== undefined && (cita as any).centroMedico !== ''
+              ? Number((cita as any).centroMedico)
+              : (sede === 'centro' ? 1 : sede === 'sur' ? 2 : 0),
           })
         });
       fetchCitas();
@@ -506,7 +506,12 @@ export default function App() {
   const handleDeleteCita = async (id: string) => {
     try {
       const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/citas/${id}?sede=${sede}`, { method: "DELETE" });
+      const res = await fetch(`http://localhost:4000/api/citas/${id}?sede=${sede}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error('handleDeleteCita failed', res.status, body);
+        // still refresh list to show current server state
+      }
       fetchCitas();
     } catch (error) {}
   };

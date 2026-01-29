@@ -48,15 +48,28 @@ async function addDoctor(req, res) {
   const sede = req.query.sede || 'centro';
   const centroVal = sedeToCentroId(sede);
   const { nombre, apellido, id_especialidad } = req.body;
+  console.log(`addDoctor: incoming (sede=${sede}) body=`, req.body);
   try {
     const pool = await getConnection(sede);
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      // compute or use provided id_doctor
+      let id_doctor = req.body.id_doctor || req.body.id || null;
+      const suf = sede.toUpperCase() === 'CENTRO' ? 'CENTRO' : (sede.toLowerCase() === 'sur' ? 'SUR' : 'NORTE');
+      const tableName = `dbo.doctor_${suf}`;
+      if (!id_doctor) {
+        const r = await new sql.Request(transaction).query(`SELECT ISNULL(MAX(id_doctor),0)+1 AS nextId FROM ${tableName}`);
+        id_doctor = r.recordset && r.recordset[0] && r.recordset[0].nextId ? r.recordset[0].nextId : 1;
+        console.log('addDoctor: computed id_doctor=', id_doctor);
+      }
+      const idEspVal = id_especialidad ? Number(id_especialidad) : null;
+      console.log('addDoctor: using id_especialidad=', idEspVal, 'centro_medico=', centroVal, 'id_doctor=', id_doctor);
       const result = await new sql.Request(transaction)
+        .input('id_doctor', sql.Int, id_doctor)
         .input('nombre', sql.VarChar(100), nombre)
         .input('apellido', sql.VarChar(100), apellido)
-        .input('id_especialidad', sql.Int, id_especialidad)
+        .input('id_especialidad', sql.Int, idEspVal)
         .input('centro_medico', sql.Int, centroVal)
         .query(queries[sede].insertDoctor);
       await transaction.commit();

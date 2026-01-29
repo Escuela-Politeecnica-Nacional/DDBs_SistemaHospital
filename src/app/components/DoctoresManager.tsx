@@ -52,6 +52,7 @@ export function DoctoresManager({
     especialidadId: "",
     centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
   });
+  const [idValue, setIdValue] = useState("");
 
   const filteredDoctores = doctores.filter((d) =>
     (d.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -72,6 +73,7 @@ export function DoctoresManager({
         especialidadId: doctor.especialidadId,
         centroMedico: doctor.centroMedico || (selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0'),
       });
+      setIdValue(doctor.id || '');
     } else {
       setEditingDoctor(null);
       setFormData({
@@ -80,6 +82,7 @@ export function DoctoresManager({
         especialidadId: "",
         centroMedico: selectedCenter === 'CENTRO' ? '1' : selectedCenter === 'SUR' ? '2' : '0',
       });
+      setIdValue('');
     }
     setIsDialogOpen(true);
   };
@@ -90,9 +93,9 @@ export function DoctoresManager({
   };
 
   const handleSubmit = () => {
-    const doctorData = { ...formData, centroMedico: selectedCenter };
+    const doctorData: Doctor = { id: idValue?.toString() || '', nombre: formData.nombre, apellido: formData.apellido, especialidadId: formData.especialidadId, centroMedico: formData.centroMedico || selectedCenter };
     if (editingDoctor) {
-      onEditDoctor(editingDoctor.id, doctorData);
+      onEditDoctor(editingDoctor.id, { nombre: doctorData.nombre, apellido: doctorData.apellido, especialidadId: doctorData.especialidadId, centroMedico: doctorData.centroMedico });
     } else {
       onAddDoctor(doctorData);
     }
@@ -210,6 +213,10 @@ export function DoctoresManager({
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="id_doctor">ID Doctor</Label>
+              <Input id="id_doctor" value={idValue} onChange={(e) => setIdValue(e.target.value)} placeholder="Dejar vacío para autogenerar" readOnly={!!editingDoctor} />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="nombre">Nombre</Label>
               <Input

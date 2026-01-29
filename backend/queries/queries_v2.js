@@ -58,15 +58,17 @@ const queries = {};
     VALUES (@id_cita, @observaciones, @diagnostico, @tratamiento, @fecha_registro, @centroVal)
   `;
 
-    // QUERY: get citas
-    q.getCitas = `SELECT * FROM dbo.${table('cita', sede)} WHERE centro_medico = @centroVal`;
+    // QUERY: get citas - return only the expected fields
+    q.getCitas = `SELECT id_cita, id_consultorio, id_paciente, fecha, motivo, centro_medico FROM dbo.${table('cita', sede)} WHERE centro_medico = @centroVal`;
 
-    // QUERY: insert cita
+    // QUERY: insert cita (accept id_cita when provided)
     q.insertCita = `
-    INSERT INTO dbo.${table('cita', sede)} (id_consultorio, id_paciente, fecha, motivo, centro_medico)
+    INSERT INTO dbo.${table('cita', sede)} (id_cita, id_consultorio, id_paciente, fecha, motivo, centro_medico)
     OUTPUT INSERTED.*
-    VALUES (@id_consultorio, @id_paciente, @fecha, @motivo, @centro_medico)
+    VALUES (@id_cita, @id_consultorio, @id_paciente, @fecha, @motivo, @centro_medico)
   `;
+    // QUERY: delete cita by id
+    q.deleteCita = `DELETE FROM dbo.${table('cita', sede)} WHERE id_cita = @id_cita`;
 
     // QUERY: consultorios
     q.getConsultorios = `SELECT * FROM dbo.${table('consultorio', sede)} WHERE centro_medico = @centroVal`;
@@ -75,7 +77,8 @@ const queries = {};
 
     // QUERY: doctores
     q.getDoctores = `SELECT * FROM dbo.${table('doctor', sede)} WHERE centro_medico = @centroVal`;
-    q.insertDoctor = `INSERT INTO dbo.${table('doctor', sede)} (nombre, apellido, id_especialidad, centro_medico) OUTPUT INSERTED.* VALUES (@nombre, @apellido, @id_especialidad, @centro_medico)`;
+    // Accept id_doctor when provided (some schemas don't use IDENTITY)
+    q.insertDoctor = `INSERT INTO dbo.${table('doctor', sede)} (id_doctor, nombre, apellido, id_especialidad, centro_medico) OUTPUT INSERTED.* VALUES (@id_doctor, @nombre, @apellido, @id_especialidad, @centro_medico)`;
 
     // QUERY: especialidades (shared table, no suffix)
     q.getEspecialidades = `SELECT * FROM dbo.especialidad`;
