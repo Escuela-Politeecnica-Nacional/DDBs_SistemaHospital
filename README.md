@@ -16,3 +16,10 @@ Aplicativo simulando un sistema hospitalario conteniendo 3 sedes en distintos lu
   
 
   path: ./backend -> npm install jsonwebtoken
+  Path: ../DDBs_SistemaHospital
+    -> npm i 
+    -> npm run dev
+  Path: ../DDBs_SistemaHospital/backend
+    -> node app.js
+
+  npm install jsonwebtoken
