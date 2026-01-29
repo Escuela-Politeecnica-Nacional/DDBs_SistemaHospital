@@ -56,6 +56,8 @@ export function PacientesManager({
       p.id.includes(searchTerm))
   );
 
+  console.log('Filtered Pacientes:', filteredPacientes);
+
   const handleOpenDialog = async (paciente?: Paciente) => {
     if (paciente) {
       setEditingPaciente(paciente);
@@ -149,7 +151,7 @@ export function PacientesManager({
     handleCloseDialog();
   };
 
-  const localFilter = (currentFilter || selectedCenter).toUpperCase();
+  // Filtering removed: the UI will not change sede. Backend selection remains server-side.
 
   return (
     <div className="space-y-6">
@@ -160,17 +162,7 @@ export function PacientesManager({
               Gestión de Pacientes - {selectedCenter}
             </CardTitle>
             <div className="flex items-center gap-3">
-              <select
-                value={localFilter}
-                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
-                className="border rounded px-3 py-2 text-sm"
-                aria-label="Filtro sede"
-              >
-                <option value={"TODOS"}>Todos</option>
-                <option value={"NORTE"}>Norte</option>
-                <option value={"CENTRO"}>Centro</option>
-                <option value={"SUR"}>Sur</option>
-              </select>
+              <div className="text-sm font-medium px-3 py-2">{selectedCenter}</div>
               <Button
                 onClick={() => handleOpenDialog()}
                 className="bg-blue-500 hover:bg-blue-600 text-white"

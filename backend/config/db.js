@@ -6,6 +6,21 @@ dotenv.config({ path: envPath });
 const sql = require('mssql');
 console.log(`env loaded from ${envPath} DB_HOST_CENTRO=${process.env.DB_HOST_CENTRO}`);
 
+console.log('Variables de entorno cargadas:', {
+  DB_HOST_CENTRO: process.env.DB_HOST_CENTRO,
+  DB_USER_CENTRO: process.env.DB_USER_CENTRO,
+  DB_PASS_CENTRO: process.env.DB_PASS_CENTRO,
+  DB_NAME_CENTRO: process.env.DB_NAME_CENTRO,
+  DB_HOST_SUR: process.env.DB_HOST_SUR,
+  DB_USER_SUR: process.env.DB_USER_SUR,
+  DB_PASS_SUR: process.env.DB_PASS_SUR,
+  DB_NAME_SUR: process.env.DB_NAME_SUR,
+  DB_HOST_NORTE: process.env.DB_HOST_NORTE,
+  DB_USER_NORTE: process.env.DB_USER_NORTE,
+  DB_PASS_NORTE: process.env.DB_PASS_NORTE,
+  DB_NAME_NORTE: process.env.DB_NAME_NORTE,
+});
+
 const dbConfigs = {
   centro: {
     user: process.env.DB_USER_CENTRO,
