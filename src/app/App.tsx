@@ -68,6 +68,16 @@ interface Historial {
   fecha: string;
 }
 
+// Utilidad para mapear el nombre del centro a su valor numérico
+const getSedeNumber = (sede: string) => {
+  if (!sede) return 1;
+  const s = sede.toLowerCase();
+  if (s === 'centro') return 1;
+  if (s === 'sur') return 2;
+  if (s === 'norte') return 0;
+  return 1;
+};
+
 export default function App() {
   // Helper: normalize centro_medico value to uppercase label used in UI
   const centroLabel = (val: any) => {
@@ -303,8 +313,8 @@ export default function App() {
    */
   const handleAddDoctor = async (doctor: Doctor) => {
     try {
-      const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/doctores?sede=${sede}&filter=${doctoresFilter}`,
+      const sedeNum = getSedeNumber(selectedCenter);
+      await fetch(`http://localhost:4000/api/doctores?sede=${sedeNum}&filter=${doctoresFilter}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -313,7 +323,7 @@ export default function App() {
             nombre: doctor.nombre,
             apellido: doctor.apellido,
             id_especialidad: doctor.especialidadId,
-            centro_medico: Number(doctor.centroMedico) || (sede === 'centro' ? 1 : sede === 'sur' ? 2 : 0),
+            centro_medico: Number(doctor.centroMedico) || sedeNum,
           })
         });
       fetchDoctores();
@@ -325,8 +335,8 @@ export default function App() {
    */
   const handleEditDoctor = async (id: string, doctor: Omit<Doctor, "id">) => {
     try {
-      const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/doctores/${id}?sede=${sede}`,
+      const sedeNum = getSedeNumber(selectedCenter);
+      await fetch(`http://localhost:4000/api/doctores/${id}?sede=${sedeNum}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -334,7 +344,8 @@ export default function App() {
             nombre: doctor.nombre,
             apellido: doctor.apellido,
             id_especialidad: doctor.especialidadId,
-            centro_medico: Number(doctor.centroMedico) || (sede === 'centro' ? 1 : sede === 'sur' ? 2 : 0),
+            centro_medico: Number(doctor.centroMedico) || sedeNum,
+            sede: sedeNum
           })
         });
       fetchDoctores();
@@ -346,8 +357,8 @@ export default function App() {
    */
   const handleDeleteDoctor = async (id: string) => {
     try {
-      const sede = selectedCenter.toLowerCase();
-      await fetch(`http://localhost:4000/api/doctores/${id}?sede=${sede}`, { method: "DELETE" });
+      const sedeNum = getSedeNumber(selectedCenter);
+      await fetch(`http://localhost:4000/api/doctores/${id}?sede=${sedeNum}`, { method: "DELETE" });
       fetchDoctores();
     } catch (error) {}
   };
@@ -640,10 +651,6 @@ export default function App() {
       fetchHistoriales();
     } catch (error) {}
   };
-
-  // ...existing code...
-
-  // ...existing code...
 
   const handleViewHistorial = (citaId: string) => {
     setSelectedCitaId(citaId);
