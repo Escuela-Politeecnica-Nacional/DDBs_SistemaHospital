@@ -180,26 +180,13 @@ export function CitasManager({
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Gestión de Citas - {selectedCenter}
             </CardTitle>
-            <div className="flex items-center gap-3">
-              <select
-                value={(currentFilter || selectedCenter).toUpperCase()}
-                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
-                className="border rounded px-3 py-2 text-sm"
-                aria-label="Filtro sede citas"
-              >
-                <option value={"TODOS"}>Todos</option>
-                <option value={"NORTE"}>Norte</option>
-                <option value={"CENTRO"}>Centro</option>
-                <option value={"SUR"}>Sur</option>
-              </select>
-              <Button
-                onClick={() => handleOpenDialog()}
-                className="bg-green-500 hover:bg-green-600 text-white"
-              >
-                <Plus className="size-4 mr-2" />
-                Nueva Cita
-              </Button>
-            </div>
+            <Button
+              onClick={() => handleOpenDialog()}
+              className="bg-green-500 hover:bg-green-600 text-white"
+            >
+              <Plus className="size-4 mr-2" />
+              Nueva Cita
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

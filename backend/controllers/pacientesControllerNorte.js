@@ -8,10 +8,9 @@ const queries = {
     WHERE centro_medico = @centroVal;
     `,
     getPacienteById: `
-        SELECT pi.id_paciente, pi.cedula, pd.nombre, pd.apellido, pd.fecha_nacimiento, pd.genero
-        FROM dbo.paciente_detalle pd
-        JOIN dbo.paciente_info pi ON pd.id_paciente = pi.id_paciente
-        WHERE pd.id_paciente = @id_paciente AND pd.centro_medico = @centroVal
+        SELECT id_paciente, cedula, nombre, apellido, fecha_nacimiento, genero, centro_medico
+        FROM dbo.paciente
+        WHERE centro_medico = @centroVal AND id_paciente = @id_paciente;
     `,
     insertPacienteInfo: `
         INSERT INTO dbo.paciente_info (id_paciente, cedula, centro_medico)
