@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Cita, Paciente, Doctor, Consultorio } from "@/app/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
@@ -9,33 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/app/components/ui/badge";
 import { Plus, Edit, Trash2, Search, FileText } from "lucide-react";
 
-interface Cita {
-  id: string;
-  pacienteId: string;
-  consultorioId: string;
-  fecha: string;
-  motivo: string;
-}
-
-interface Paciente {
-  id: string;
-  nombre: string;
-  apellido: string;
-  centroMedico: string;
-}
-
-interface Doctor {
-  id: string;
-  nombre: string;
-  apellido: string;
-  centroMedico: string;
-}
-
-interface Consultorio {
-  id: string;
-  numero: string;
-  centroMedico: string;
-}
+// using shared types from @/app/types
 
 interface CitasManagerProps {
   selectedCenter: string;
@@ -64,6 +39,8 @@ export function CitasManager({
   currentFilter,
   onFilterChange,
 }: CitasManagerProps) {
+  console.log('CitasManager citas:', citas);
+  const isUsuario = selectedCenter === 'USUARIO';
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCita, setEditingCita] = useState<Cita | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -76,29 +53,44 @@ export function CitasManager({
     centroMedico: "",
   });
 
-  // Filtrar datos por centro médico
-  const pacientesCentro = pacientes.filter((p) => p.centroMedico === selectedCenter);
-  const doctoresCentro = doctores.filter((d) => d.centroMedico === selectedCenter);
-  const consultoriosCentro = consultorios.filter((c) => c.centroMedico === selectedCenter);
-
-  // Filtrar citas por centro médico (derivada de consultorios)
-  const citasCentro = citas.filter((cita) => {
-    const consultorio = consultorios.find((c) => c.id === cita.consultorioId);
-    return consultorio?.centroMedico === selectedCenter;
-  });
-
-  const filteredCitas = citasCentro.filter((cita) => {
-    const paciente = pacientes.find((p) => p.id === cita.pacienteId);
-    const searchLower = (searchTerm || '').toLowerCase();
-    const nombre = (paciente?.nombre || '').toLowerCase();
-    const apellido = (paciente?.apellido || '').toLowerCase();
-    const motivo = (cita.motivo || '').toLowerCase();
-    return (
-      nombre.includes(searchLower) ||
-      apellido.includes(searchLower) ||
-      motivo.includes(searchLower)
-    );
-  });
+  // Filtrado especial para USUARIO: mostrar todas las citas sin filtrar por centro ni arrays relacionados
+  let pacientesCentro: Paciente[] = [];
+  let doctoresCentro: Doctor[] = [];
+  let consultoriosCentro: Consultorio[] = [];
+  let filteredCitas: Cita[];
+  if (isUsuario) {
+    filteredCitas = citas.filter((cita) => {
+      const searchLower = (searchTerm || '').toLowerCase();
+      return (
+        cita.id.includes(searchLower) ||
+        cita.consultorioId.includes(searchLower) ||
+        cita.pacienteId.includes(searchLower) ||
+        cita.doctorId.includes(searchLower) ||
+        (cita.motivo || '').toLowerCase().includes(searchLower)
+      );
+    });
+  } else {
+    pacientesCentro = pacientes.filter((p) => p.centroMedico === selectedCenter);
+    doctoresCentro = doctores.filter((d) => d.centroMedico === selectedCenter);
+    consultoriosCentro = consultorios.filter((c) => c.centroMedico === selectedCenter);
+    // Filtrar citas por centro médico (derivada de consultorios)
+    const citasCentro = citas.filter((cita) => {
+      const consultorio = consultorios.find((c) => c.id === cita.consultorioId);
+      return consultorio?.centroMedico === selectedCenter;
+    });
+    filteredCitas = citasCentro.filter((cita) => {
+      const paciente = pacientes.find((p) => p.id === cita.pacienteId);
+      const searchLower = (searchTerm || '').toLowerCase();
+      const nombre = (paciente?.nombre || '').toLowerCase();
+      const apellido = (paciente?.apellido || '').toLowerCase();
+      const motivo = (cita.motivo || '').toLowerCase();
+      return (
+        nombre.includes(searchLower) ||
+        apellido.includes(searchLower) ||
+        motivo.includes(searchLower)
+      );
+    });
+  }
 
   const getPacienteNombre = (id: string) => {
     const paciente = pacientes.find((p) => p.id === id);
@@ -107,6 +99,11 @@ export function CitasManager({
 
   const getConsultorioNumero = (id: string) => {
     return consultorios.find((c) => c.id === id)?.numero || "N/A";
+  };
+
+  const getDoctorNombre = (id: string) => {
+    const doctor = doctores.find((d) => d.id === id);
+    return doctor ? `${doctor.nombre} ${doctor.apellido}` : "N/A";
   };
 
   const handleOpenDialog = (cita?: Cita) => {
@@ -176,17 +173,19 @@ export function CitasManager({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Gestión de Citas - {selectedCenter}
             </CardTitle>
-            <Button
-              onClick={() => handleOpenDialog()}
-              className="bg-green-500 hover:bg-green-600 text-white"
-            >
-              <Plus className="size-4 mr-2" />
-              Nueva Cita
-            </Button>
+            {!isUsuario && (
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-green-500 hover:bg-green-600 text-white"
+              >
+                <Plus className="size-4 mr-2" />
+                Nueva Cita
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -205,65 +204,93 @@ export function CitasManager({
           <div className="border rounded-lg overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead>ID</TableHead>
-                  <TableHead>id_paciente</TableHead>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>id_consultorio</TableHead>
-                  <TableHead>Consultorio</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Motivo</TableHead>
-                  <TableHead>Centro</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
+                {isUsuario ? (
+                  <TableRow className="bg-gray-50">
+                    <TableHead>ID</TableHead>
+                    <TableHead>Consultorio</TableHead>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>Doctor</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead>Centro</TableHead>
+                  </TableRow>
+                ) : (
+                  <TableRow className="bg-gray-50">
+                    <TableHead>ID</TableHead>
+                    <TableHead>id_paciente</TableHead>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>id_consultorio</TableHead>
+                    <TableHead>Consultorio</TableHead>
+                    <TableHead>Doctor</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead>Centro</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                )}
               </TableHeader>
               <TableBody>
                 {filteredCitas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-gray-500 py-8">
+                    <TableCell colSpan={isUsuario ? 7 : 10} className="text-center text-gray-500 py-8">
                       No hay citas registradas en {selectedCenter}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredCitas.map((cita) => (
                     <TableRow key={cita.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">{cita.id}</TableCell>
-                      <TableCell className="font-medium">{cita.pacienteId}</TableCell>
-                      <TableCell>{getPacienteNombre(cita.pacienteId)}</TableCell>
-                      <TableCell className="font-medium">{cita.consultorioId}</TableCell>
-                      <TableCell>{getConsultorioNumero(cita.consultorioId)}</TableCell>
-                      <TableCell className="font-medium">{cita.fecha}</TableCell>
-                      <TableCell>{cita.motivo}</TableCell>
-                      <TableCell>{String((cita as any).centroMedico ?? '')}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onViewHistorial(cita.id)}
-                            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                            title="Ver Historial Médico"
-                          >
-                            <FileText className="size-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenDialog(cita)}
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          >
-                            <Edit className="size-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onDeleteCita(cita.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {isUsuario ? (
+                        <>
+                          <TableCell className="font-medium">{String(cita.id)}</TableCell>
+                          <TableCell className="font-medium">{String(cita.consultorioId)}</TableCell>
+                          <TableCell className="font-medium">{String(cita.pacienteId)}</TableCell>
+                          <TableCell className="font-medium">{String(cita.doctorId)}</TableCell>
+                          <TableCell className="font-medium">{String(cita.fecha)}</TableCell>
+                          <TableCell>{String(cita.motivo)}</TableCell>
+                          <TableCell>{String(cita.centroMedico ?? '')}</TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="font-medium">{cita.id}</TableCell>
+                          <TableCell className="font-medium">{cita.pacienteId}</TableCell>
+                          <TableCell>{getPacienteNombre(cita.pacienteId)}</TableCell>
+                          <TableCell className="font-medium">{cita.consultorioId}</TableCell>
+                          <TableCell>{getConsultorioNumero(cita.consultorioId)}</TableCell>
+                          <TableCell>{getDoctorNombre(cita.doctorId)}</TableCell>
+                          <TableCell className="font-medium">{cita.fecha}</TableCell>
+                          <TableCell>{cita.motivo}</TableCell>
+                          <TableCell>{String((cita as any).centroMedico ?? '')}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => onViewHistorial(cita.id)}
+                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                title="Ver Historial Médico"
+                              >
+                                <FileText className="size-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenDialog(cita)}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <Edit className="size-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => onDeleteCita(cita.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))
                 )}

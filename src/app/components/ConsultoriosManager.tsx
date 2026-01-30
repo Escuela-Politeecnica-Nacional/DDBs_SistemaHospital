@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Consultorio } from "@/app/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
@@ -8,12 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/app/components/ui/badge";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 
-interface Consultorio {
-  id: string;
-  numero: string;
-  ubicacion: string;
-  centroMedico: string;
-}
+// using shared `Consultorio` type from @/app/types
 
 interface ConsultoriosManagerProps {
   selectedCenter: string;

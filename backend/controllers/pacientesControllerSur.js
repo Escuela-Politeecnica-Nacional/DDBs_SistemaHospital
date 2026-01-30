@@ -5,7 +5,7 @@ const queries = {
     getPacientes: `
     SELECT id_paciente, cedula, nombre, apellido, fecha_nacimiento, genero, centro_medico
     FROM dbo.paciente
-    WHERE centro_medico = @centroVal;
+    WHERE centro_medico = 2;
     `,
     getPacienteById: `
         SELECT pi.id_paciente, pi.cedula, pd.nombre, pd.apellido, pd.fecha_nacimiento, pd.genero

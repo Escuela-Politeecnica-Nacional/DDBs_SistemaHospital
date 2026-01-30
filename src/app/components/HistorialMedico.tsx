@@ -2,41 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { ArrowLeft, FileText, Calendar, User, Stethoscope } from "lucide-react";
-
-interface Historial {
-  id: string;
-  citaId: string;
-  diagnostico: string;
-  tratamiento: string;
-  observaciones: string;
-  fecha: string;
-}
-
-interface Cita {
-  id: string;
-  pacienteId: string;
-  consultorioId: string;
-  fecha: string;
-  motivo: string;
-}
-
-interface Paciente {
-  id: string;
-  nombre: string;
-  apellido: string;
-  cedula: string;
-}
-
-interface Doctor {
-  id: string;
-  nombre: string;
-  apellido: string;
-}
-
-interface Consultorio {
-  id: string;
-  numero: string;
-}
+import type { Cita, Paciente, Doctor, Consultorio, Historial } from "@/app/types";
 
 interface HistorialMedicoProps {
   citaId: string;

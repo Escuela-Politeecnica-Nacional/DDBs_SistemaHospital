@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Especialidad } from "@/app/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
@@ -6,11 +7,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Edit, Trash2, Plus } from "lucide-react";
-
-interface Especialidad {
-  id: string;
-  nombre: string;
-}
 
 interface Props {
   especialidades: Especialidad[];

@@ -12,6 +12,7 @@ const historialRoutes = require('./routes/historial');
 const especialidadesRoutes = require('./routes/especialidades');
 const centrosRoutes = require('./routes/centros');
 const authRoutes = require('./routes/auth');
+const usuarioRoutes = require('./routes/usuario');
 const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/historial', historialRoutes);
 app.use('/api/especialidades', especialidadesRoutes);
 app.use('/api/centros', centrosRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/usuario', usuarioRoutes);
 const statusRoutes = require('./routes/_status');
 app.use('/api/_status', statusRoutes);
 const inspectRoutes = require('./routes/_inspect');

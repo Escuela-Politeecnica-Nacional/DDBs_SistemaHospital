@@ -8,19 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
 import { Badge } from "@/app/components/ui/badge";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
-
-interface Doctor {
-  id: string;
-  nombre: string;
-  apellido: string;
-  especialidadId: string;
-  centroMedico: string;
-}
-
-interface Especialidad {
-  id: string;
-  nombre: string;
-}
+import type { Doctor, Especialidad } from "@/app/types";
 
 interface DoctoresManagerProps {
   selectedCenter: string;
