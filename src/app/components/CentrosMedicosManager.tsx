@@ -1,16 +1,8 @@
 import { useState } from "react";
+import type { Centro } from "@/app/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
-
-interface Centro {
-  id: string;
-  nombre: string;
-  direccion: string;
-  telefono: string;
-  email: string;
-  sede: string;
-}
 
 interface Props {
   centros: Centro[];
@@ -38,8 +30,6 @@ export function CentrosMedicosManager({ centros = [] }: Props) {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Dirección</TableHead>
                   <TableHead>Teléfono</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Sede</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -49,8 +39,6 @@ export function CentrosMedicosManager({ centros = [] }: Props) {
                     <TableCell>{c.nombre}</TableCell>
                     <TableCell>{c.direccion}</TableCell>
                     <TableCell>{c.telefono}</TableCell>
-                    <TableCell>{c.email}</TableCell>
-                    <TableCell>{c.sede}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

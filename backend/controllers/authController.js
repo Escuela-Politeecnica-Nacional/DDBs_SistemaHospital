@@ -10,6 +10,7 @@ async function login(req, res) {
       norte: { user: 'norte', pass: 'norte' },
       centro: { user: 'centro', pass: 'centro' },
       sur: { user: 'sur', pass: 'sur' },
+      usuario: { user: 'usuario', pass: 'usuario' },
     };
 
     // Encontrar la sede que coincida

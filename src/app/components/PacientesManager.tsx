@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Paciente } from "@/app/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
@@ -7,15 +8,7 @@ import { Label } from "@/app/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 
-interface Paciente {
-  id: string;
-  cedula: string;
-  nombre: string;
-  apellido: string;
-  fechaNacimiento: string;
-  genero: string;
-  centroMedico: string;
-}
+// using shared `Paciente` type from @/app/types
 
 interface PacientesManagerProps {
   selectedCenter: string;

@@ -3,7 +3,7 @@ const { getConnection, sql } = require('../config/db');
 const queries = {
     getDoctores: `
         SELECT id_doctor, nombre, apellido, id_especialidad, centro_medico 
-        FROM dbo.doctor WHERE centro_medico = @centroVal
+        FROM dbo.doctor WHERE centro_medico = 2
         `,
     insertDoctor: `
         SET XACT_ABORT ON;
