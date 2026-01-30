@@ -95,26 +95,13 @@ export function ConsultoriosManager({
             <CardTitle className="text-2xl font-semibold text-gray-800">
               Gestión de Consultorios - {selectedCenter}
             </CardTitle>
-            <div className="flex items-center gap-3">
-              <select
-                value={(currentFilter || selectedCenter).toUpperCase()}
-                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
-                className="border rounded px-3 py-2 text-sm"
-                aria-label="Filtro sede consultorios"
-              >
-                <option value={"TODOS"}>Todos</option>
-                <option value={"NORTE"}>Norte</option>
-                <option value={"CENTRO"}>Centro</option>
-                <option value={"SUR"}>Sur</option>
-              </select>
-              <Button
-                onClick={() => handleOpenDialog()}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <Plus className="size-4 mr-2" />
-                Nuevo Consultorio
-              </Button>
-            </div>
+            <Button
+              onClick={() => handleOpenDialog()}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              <Plus className="size-4 mr-2" />
+              Nuevo Consultorio
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

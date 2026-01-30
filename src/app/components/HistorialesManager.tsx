@@ -27,19 +27,6 @@ export function HistorialesManager({ historiales = [], onViewDetalle, currentFil
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-2xl font-semibold text-gray-800">Historiales Médicos</CardTitle>
-                        <div className="flex items-center gap-3">
-                            <select
-                                value={localFilter}
-                                onChange={(e) => onFilterChange && onFilterChange(e.target.value.toLowerCase())}
-                                className="border rounded px-3 py-2 text-sm"
-                                aria-label="Filtro sede historiales"
-                            >
-                                <option value={"TODOS"}>Todos</option>
-                                <option value={"NORTE"}>Norte</option>
-                                <option value={"CENTRO"}>Centro</option>
-                                <option value={"SUR"}>Sur</option>
-                            </select>
-                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
