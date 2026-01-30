@@ -10,7 +10,11 @@ interface Props {
 
 export function CentrosMedicosManager({ centros = [] }: Props) {
   const [search, setSearch] = useState("");
-  const filtered = centros.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()));
+  console.log('CentrosMedicosManager centros:', centros);
+  // Si no hay campo nombre (por ejemplo, para USUARIO), mostrar todos los centros sin filtrar
+  const filtered = centros.length > 0 && centros[0].nombre
+    ? centros.filter((c) => c.nombre.toLowerCase().includes(search.toLowerCase()))
+    : centros;
 
   return (
     <div className="space-y-6">
@@ -30,15 +34,19 @@ export function CentrosMedicosManager({ centros = [] }: Props) {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Dirección</TableHead>
                   <TableHead>Teléfono</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Sede</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((c) => (
-                  <TableRow key={c.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{c.id}</TableCell>
-                    <TableCell>{c.nombre}</TableCell>
-                    <TableCell>{c.direccion}</TableCell>
-                    <TableCell>{c.telefono}</TableCell>
+                  <TableRow key={c.id_centro_medico ?? c.id ?? c.id_centro} className="hover:bg-gray-50">
+                    <TableCell className="font-medium">{c.id_centro_medico ?? c.id ?? c.id_centro ?? '—'}</TableCell>
+                    <TableCell>{c.nombre ?? c.nombre_centro ?? '—'}</TableCell>
+                    <TableCell>{c.direccion ?? '—'}</TableCell>
+                    <TableCell>{c.telefono ?? '—'}</TableCell>
+                    <TableCell>{c.email ?? '—'}</TableCell>
+                    <TableCell>{c.sede ?? '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

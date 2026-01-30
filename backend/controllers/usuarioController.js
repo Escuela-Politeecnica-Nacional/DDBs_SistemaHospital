@@ -26,7 +26,7 @@ const queries = {
         FROM dbo.cita
     `,
     getCentros: `
-        SELECT id_centro, nombre_centro, direccion, telefono
+        SELECT id_centro_medico, nombre, direccion, telefono, email, sede
         FROM dbo.centros_medicos
     `,
 };

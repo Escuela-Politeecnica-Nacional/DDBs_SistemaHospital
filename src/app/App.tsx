@@ -586,10 +586,12 @@ export default function App() {
       const data = await res.json();
       console.log(`fetchCentros: received ${Array.isArray(data) ? data.length : 0} items from API`);
       const centrosAdaptados = data.map((c: any) => ({
-        id: c.id_centro?.toString() || c.id?.toString() || '',
-        nombre: c.nombre_centro || '',
+        id: c.id_centro_medico?.toString() || c.id_centro?.toString() || c.id?.toString() || '',
+        nombre: c.nombre || c.nombre_centro || '',
         direccion: c.direccion || '',
         telefono: c.telefono || '',
+        email: c.email || '',
+        sede: c.sede || '',
       }));
       setCentros(centrosAdaptados);
     } catch (error) {
